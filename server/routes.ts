@@ -131,8 +131,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const messages = await storage.getChatMessages(chatId);
       const context = messages.slice(-10).map(msg => msg.content); // Last 10 messages
       
-      // Generate AI response
-      const systemPrompt = chat.configuration?.systemPrompt || "";
+      // Generate system prompt from chat configuration
+      const chatConfig = {
+        role: chat.role as "custom" | "researcher" | "product_manager" | "developer" | "content_writer" | "designer",
+        customRole: chat.customRole || undefined,
+        context: chat.context || "",
+        task: chat.task || "",
+        inputData: chat.inputData || "",
+        constraints: chat.constraints || "",
+        examples: chat.examples || "",
+        optional: chat.optional || "",
+        audience: chat.audience || "",
+        aiProvider: chat.aiProvider as "openai" | "gemini" | "claude" | "grok",
+        aiModel: chat.aiModel,
+        title: chat.title
+      };
+      
+      const systemPrompt = await PromptService.generatePrompt(chatConfig);
       const aiResponse = await AIOrchestrator.generateResponse(
         userId,
         chat.aiProvider,

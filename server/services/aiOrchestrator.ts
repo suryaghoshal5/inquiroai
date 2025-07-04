@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import Anthropic from "@anthropic-ai/sdk";
 import { storage } from "../storage";
 import { CryptoService } from "./cryptoService";
@@ -52,9 +52,9 @@ export class AIOrchestrator {
     return new OpenAI({ apiKey });
   }
 
-  private static async createGeminiClient(userId: string): Promise<GoogleGenerativeAI> {
+  private static async createGeminiClient(userId: string): Promise<GoogleGenAI> {
     const apiKey = await this.getApiKey(userId, "gemini");
-    return new GoogleGenerativeAI(apiKey);
+    return new GoogleGenAI({ apiKey });
   }
 
   private static async createClaudeClient(userId: string): Promise<Anthropic> {
@@ -129,17 +129,25 @@ export class AIOrchestrator {
     context: string[]
   ): Promise<string> {
     const client = await this.createGeminiClient(userId);
-    const geminiModel = client.getGenerativeModel({ model });
+    
+    // Prepare the conversation history
+    const contents = context.map((msg, idx) => ({
+      role: idx % 2 === 0 ? "user" : "model",
+      parts: [{ text: msg }]
+    }));
 
-    const chat = geminiModel.startChat({
-      history: context.map((msg, idx) => ({
-        role: idx % 2 === 0 ? "user" : "model",
-        parts: [{ text: msg }]
-      }))
+    // Add the current prompt
+    contents.push({
+      role: "user",
+      parts: [{ text: prompt }]
     });
 
-    const result = await chat.sendMessage(prompt);
-    return result.response.text();
+    const result = await client.models.generateContent({
+      model,
+      contents
+    });
+
+    return result.text || "No response generated";
   }
 
   private static async generateClaudeResponse(
@@ -224,9 +232,11 @@ export class AIOrchestrator {
           await openai.models.list();
           return true;
         case "gemini":
-          const gemini = new GoogleGenerativeAI(apiKey);
-          const model = gemini.getGenerativeModel({ model: "gemini-1.5-flash" });
-          await model.generateContent("test");
+          const gemini = new GoogleGenAI({ apiKey });
+          await gemini.models.generateContent({
+            model: "gemini-1.5-flash",
+            contents: [{ role: "user", parts: [{ text: "test" }] }]
+          });
           return true;
         case "claude":
           const claude = new Anthropic({ apiKey });
