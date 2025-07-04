@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(220, 14.3%, 4.1%);
+  --muted: hsl(220, 14.3%, 95.9%);
+  --muted-foreground: hsl(220, 8.9%, 46.1%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(220, 14.3%, 4.1%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(220, 14.3%, 4.1%);
+  --border: hsl(220, 13%, 91%);
+  --input: hsl(220, 13%, 91%);
+  --primary: hsl(239, 84%, 67%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(220, 14.3%, 95.9%);
+  --secondary-foreground: hsl(220, 9%, 10%);
+  --accent: hsl(220, 14.3%, 95.9%);
+  --accent-foreground: hsl(220, 9%, 10%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(210, 20%, 98%);
+  --ring: hsl(220, 14.3%, 4.1%);
+  --radius: 0.5rem;
+  
+  /* Custom colors for InquiroAI */
+  --inquiro-primary: hsl(239, 84%, 67%);
+  --inquiro-secondary: hsl(45, 95%, 50%);
+  --inquiro-accent: hsl(158, 64%, 52%);
+  --inquiro-danger: hsl(0, 84%, 60%);
+  --inquiro-gray-dark: hsl(220, 26%, 14%);
+  --inquiro-gray-light: hsl(220, 13%, 97%);
+  
+  /* Role gradients */
+  --role-researcher: linear-gradient(135deg, hsl(217, 91%, 60%) 0%, hsl(221, 83%, 53%) 100%);
+  --role-pm: linear-gradient(135deg, hsl(45, 95%, 50%) 0%, hsl(45, 93%, 47%) 100%);
+  --role-developer: linear-gradient(135deg, hsl(158, 64%, 52%) 0%, hsl(158, 65%, 50%) 100%);
+  --role-writer: linear-gradient(135deg, hsl(263, 70%, 67%) 0%, hsl(262, 83%, 58%) 100%);
+  --role-designer: linear-gradient(135deg, hsl(330, 81%, 60%) 0%, hsl(333, 71%, 51%) 100%);
+  --role-custom: linear-gradient(135deg, hsl(220, 9%, 46%) 0%, hsl(220, 13%, 38%) 100%);
+}
+
+.dark {
+  --background: hsl(220, 26%, 14%);
+  --foreground: hsl(210, 20%, 98%);
+  --muted: hsl(220, 26%, 18%);
+  --muted-foreground: hsl(220, 8.9%, 46.1%);
+  --popover: hsl(220, 26%, 14%);
+  --popover-foreground: hsl(210, 20%, 98%);
+  --card: hsl(220, 26%, 14%);
+  --card-foreground: hsl(210, 20%, 98%);
+  --border: hsl(220, 26%, 18%);
+  --input: hsl(220, 26%, 18%);
+  --primary: hsl(239, 84%, 67%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(220, 26%, 18%);
+  --secondary-foreground: hsl(210, 20%, 98%);
+  --accent: hsl(220, 26%, 18%);
+  --accent-foreground: hsl(210, 20%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(210, 20%, 98%);
+  --ring: hsl(220, 26%, 18%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .gradient-bg {
+    background: var(--inquiro-primary);
+    background: linear-gradient(135deg, var(--inquiro-primary) 0%, hsl(263, 70%, 67%) 100%);
+  }
+  
+  .chat-bubble-user {
+    background: linear-gradient(135deg, var(--inquiro-primary) 0%, hsl(263, 70%, 67%) 100%);
+  }
+  
+  .chat-bubble-ai {
+    background: linear-gradient(135deg, var(--inquiro-accent) 0%, hsl(158, 65%, 50%) 100%);
+  }
+  
+  .role-researcher {
+    background: var(--role-researcher);
+  }
+  
+  .role-pm {
+    background: var(--role-pm);
+  }
+  
+  .role-developer {
+    background: var(--role-developer);
+  }
+  
+  .role-writer {
+    background: var(--role-writer);
+  }
+  
+  .role-designer {
+    background: var(--role-designer);
+  }
+  
+  .role-custom {
+    background: var(--role-custom);
+  }
+}
+
+@layer utilities {
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+}

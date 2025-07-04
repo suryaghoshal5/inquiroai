@@ -1,0 +1,121 @@
+# InquiroAI - Replit.md
+
+## Overview
+
+InquiroAI is a web-based AI prompt management platform that enables users to create structured, role-based conversations with multiple AI models. The application allows users to bring their own API keys (BYOK) and provides an intuitive interface for managing complex AI interactions through predefined role templates.
+
+## System Architecture
+
+### Frontend Architecture
+- **Framework**: React 18 with TypeScript
+- **Build Tool**: Vite for fast development and optimized builds
+- **Styling**: Tailwind CSS with shadcn/ui component library
+- **State Management**: TanStack Query for server state management
+- **Routing**: Wouter for lightweight client-side routing
+- **Authentication**: Replit Auth integration with session management
+
+### Backend Architecture
+- **Runtime**: Node.js with Express.js server
+- **Database**: PostgreSQL with Drizzle ORM
+- **Database Provider**: Neon Database (serverless PostgreSQL)
+- **WebSocket**: Real-time chat communication
+- **Session Storage**: PostgreSQL-based session store
+- **File Processing**: Multer for file uploads with support for PDF, Excel, Word, and text files
+
+### AI Integration
+- **Multi-Provider Support**: OpenAI, Google Gemini, Anthropic Claude, and Grok
+- **API Key Management**: Encrypted storage of user-provided API keys
+- **Model Selection**: Dynamic model selection per chat session
+- **Prompt Engineering**: Role-based prompt templates with structured inputs
+
+## Key Components
+
+### Authentication System
+- **Replit Auth**: OpenID Connect integration for user authentication
+- **Session Management**: PostgreSQL-based session storage with 7-day TTL
+- **User Management**: User profiles with email, name, and profile images
+- **Protected Routes**: Authentication middleware for API endpoints
+
+### Chat Management
+- **Multi-Chat Support**: Users can create and manage multiple concurrent conversations
+- **Role-Based Prompting**: 5 predefined roles (Researcher, Product Manager, Developer, Content Writer, Designer) plus custom roles
+- **Structured Input**: 9 configurable fields including context, task, constraints, examples, and audience
+- **Real-Time Communication**: WebSocket-based chat interface with typing indicators
+
+### Database Schema
+- **Users Table**: Store user profiles and authentication data
+- **Chats Table**: Store chat configurations and metadata
+- **Messages Table**: Store conversation history with role-based messages
+- **API Keys Table**: Encrypted storage of user API keys with validation status
+- **Role Prompts Table**: Template storage for role-based prompts
+- **Sessions Table**: Session management for authentication
+
+### File Processing
+- **Supported Formats**: PDF, Excel (.xlsx/.xls), Word (.docx/.doc), Markdown, and plain text
+- **File Size Limit**: 10MB maximum file size
+- **Content Extraction**: Automatic text extraction from uploaded files
+- **Integration**: Files can be attached to input data and examples fields
+
+## Data Flow
+
+1. **User Authentication**: Users authenticate via Replit Auth, creating session tokens
+2. **Chat Creation**: Users fill out structured form with 9 fields defining the AI interaction
+3. **Prompt Generation**: Backend generates optimized prompts based on role and input data
+4. **AI Communication**: Messages are sent to selected AI provider with encrypted API keys
+5. **Real-Time Updates**: WebSocket connection provides live chat updates
+6. **Data Persistence**: All conversations and configurations are stored in PostgreSQL
+
+## External Dependencies
+
+### AI Providers
+- **OpenAI**: GPT-4o, GPT-4o-mini, GPT-4-turbo, GPT-3.5-turbo
+- **Google Gemini**: gemini-2.0-flash-exp, gemini-1.5-pro, gemini-1.5-flash
+- **Anthropic Claude**: claude-3-5-sonnet-20241022, claude-3-opus-20240229, claude-3-haiku-20240307
+- **Grok**: grok-beta, grok-vision-beta
+
+### Database
+- **Neon Database**: Serverless PostgreSQL with connection pooling
+- **Drizzle ORM**: Type-safe database operations with migration support
+
+### Authentication
+- **Replit Auth**: OpenID Connect authentication provider
+- **Session Storage**: PostgreSQL-based session management
+
+### Frontend Libraries
+- **shadcn/ui**: Component library built on Radix UI primitives
+- **TanStack Query**: Server state management with caching
+- **React Hook Form**: Form handling with Zod validation
+- **Wouter**: Lightweight routing library
+
+## Deployment Strategy
+
+### Development
+- **Vite Dev Server**: Hot module replacement for rapid development
+- **TypeScript**: Full type safety across frontend and backend
+- **Development Scripts**: `npm run dev` for concurrent frontend/backend development
+
+### Production Build
+- **Frontend**: Vite builds optimized React bundle to `dist/public`
+- **Backend**: esbuild bundles Node.js server to `dist/index.js`
+- **Database**: Drizzle migrations handle schema changes
+- **Environment**: Production mode with optimized assets and security headers
+
+### Environment Variables
+- `DATABASE_URL`: PostgreSQL connection string
+- `SESSION_SECRET`: Session encryption key
+- `ENCRYPTION_KEY`: API key encryption key
+- `REPLIT_DOMAINS`: Allowed domains for Replit Auth
+- `ISSUER_URL`: OpenID Connect issuer URL
+
+## Changelog
+
+```
+Changelog:
+- July 04, 2025. Initial setup
+```
+
+## User Preferences
+
+```
+Preferred communication style: Simple, everyday language.
+```
