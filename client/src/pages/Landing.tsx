@@ -31,15 +31,16 @@ export default function Landing() {
                 size="lg"
                 className="gradient-bg hover:shadow-lg transition-all duration-200 text-white px-8 py-4 text-lg"
               >
-                Get Started Free
+                Sign Up Free
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
               <Button 
+                onClick={handleLogin}
                 variant="outline" 
                 size="lg"
                 className="px-8 py-4 text-lg border-2 hover:bg-gray-50"
               >
-                Watch Demo
+                Login
               </Button>
             </div>
           </div>
@@ -143,14 +144,24 @@ export default function Landing() {
           <p className="text-xl text-blue-100 mb-8">
             Join thousands of professionals who are already using InquiroAI to get better results from their AI interactions.
           </p>
-          <Button
-            onClick={handleLogin}
-            size="lg"
-            className="bg-white text-blue-600 hover:bg-gray-50 px-8 py-4 text-lg font-semibold"
-          >
-            Start Your Free Trial
-            <ArrowRight className="ml-2 w-5 h-5" />
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button
+              onClick={handleLogin}
+              size="lg"
+              className="bg-white text-blue-600 hover:bg-gray-50 px-8 py-4 text-lg font-semibold"
+            >
+              Sign Up Free
+              <ArrowRight className="ml-2 w-5 h-5" />
+            </Button>
+            <Button
+              onClick={handleLogin}
+              variant="outline"
+              size="lg"
+              className="border-white text-white hover:bg-white/10 px-8 py-4 text-lg font-semibold"
+            >
+              Login
+            </Button>
+          </div>
         </div>
       </div>
 

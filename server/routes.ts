@@ -20,7 +20,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id || req.user.claims?.sub;
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
@@ -32,7 +32,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chat routes
   app.post('/api/chats', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id || req.user.claims?.sub;
       const config = chatConfigSchema.parse(req.body);
       
       const systemPrompt = await PromptService.generatePrompt(config);
@@ -65,7 +65,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/chats', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id || req.user.claims?.sub;
       const chats = await storage.getUserChats(userId);
       
       // Include last message for each chat
@@ -89,7 +89,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/chats/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id || req.user.claims?.sub;
       const chatId = parseInt(req.params.id);
       
       const chat = await storage.getChat(chatId);
@@ -107,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/chats/:id/messages', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id || req.user.claims?.sub;
       const chatId = parseInt(req.params.id);
       const { content } = req.body;
       
@@ -176,7 +176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/chats/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id || req.user.claims?.sub;
       const chatId = parseInt(req.params.id);
       
       const chat = await storage.getChat(chatId);
@@ -195,7 +195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API Key routes
   app.get('/api/api-keys', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id || req.user.claims?.sub;
       const apiKeys = await storage.getUserApiKeys(userId);
       
       // Don't send encrypted keys to client
@@ -213,7 +213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/api-keys', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id || req.user.claims?.sub;
       const { provider, apiKey } = req.body;
       
       if (!provider || !apiKey) {
@@ -256,7 +256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/api-keys/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id || req.user.claims?.sub;
       const keyId = parseInt(req.params.id);
       
       // Verify ownership
