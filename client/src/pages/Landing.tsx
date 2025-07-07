@@ -23,7 +23,7 @@ export default function Landing() {
               Meet <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">InquiroAI</span>
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-              The intelligent AI conversation platform that transforms how you interact with multiple AI providers through structured, role-based prompting.
+              The one-stop solution for expert prompt engineers
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
