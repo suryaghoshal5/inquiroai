@@ -141,6 +141,11 @@ Changelog:
     - Included SEO optimization, conversion copywriting, and multi-platform adaptation
     - Added content quality frameworks and performance optimization principles
     - Focused on engagement-driven content that balances creativity with results
+  - Enhanced designer role template with user-centered design expertise
+    - Added comprehensive UX research, information architecture, and interaction design knowledge
+    - Included design systems, accessibility compliance, and cross-platform guidelines
+    - Added design evaluation frameworks and quality control checklists
+    - Focused on user-centered solutions that balance aesthetics with usability
 ```
 
 ## User Preferences
