@@ -39,9 +39,11 @@ export default function ChatPage() {
   // WebSocket connection
   useEffect(() => {
     if (isAuthenticated && chatId) {
-      // Use localhost for development
-      const wsUrl = `ws://localhost:5000/ws`;
+      // Use correct WebSocket URL - always use the same protocol and host as the current page
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
       console.log("Connecting to WebSocket:", wsUrl);
+      console.log("Current location:", window.location.href);
       
       try {
         const socket = new WebSocket(wsUrl);
