@@ -312,11 +312,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ws.on('message', async (message) => {
       try {
         const data = JSON.parse(message.toString());
+        console.log('WebSocket received message:', data);
         
         if (data.type === 'join_chat') {
           // Join chat room
           (ws as any).chatId = data.chatId;
           (ws as any).userId = data.userId;
+          console.log(`User ${data.userId} joined chat ${data.chatId}`);
         }
         
         if (data.type === 'typing') {
@@ -337,6 +339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (data.type === 'chat_message') {
           // Handle real-time chat messages
           const { chatId, content, userId } = data;
+          console.log(`Processing chat message for chat ${chatId}: ${content}`);
           
           // Get chat details
           const chat = await storage.getChat(chatId);

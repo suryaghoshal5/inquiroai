@@ -105,15 +105,19 @@ export default function ChatPage() {
   const handleSendMessage = (content: string) => {
     if (!ws || !isAuthenticated || isMessageSending) return;
     
+    console.log("Sending message via WebSocket:", content);
     setIsMessageSending(true);
     
     // Send message via WebSocket
-    ws.send(JSON.stringify({
+    const messageData = {
       type: "chat_message",
       chatId: chatId,
       content: content,
       userId: "dev-user" // Use the mock user ID
-    }));
+    };
+    
+    console.log("WebSocket message data:", messageData);
+    ws.send(JSON.stringify(messageData));
     
     // Reset sending state after a short delay
     setTimeout(() => {
