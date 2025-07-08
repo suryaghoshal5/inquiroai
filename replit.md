@@ -146,6 +146,12 @@ Changelog:
     - Included design systems, accessibility compliance, and cross-platform guidelines
     - Added design evaluation frameworks and quality control checklists
     - Focused on user-centered solutions that balance aesthetics with usability
+  - Added comprehensive universal safety and accuracy guidelines
+    - Implemented no-hallucination policy with strict accuracy requirements
+    - Added information boundaries and professional confidentiality standards
+    - Included content safety guidelines and appropriate response patterns
+    - Created clear decline scenarios and example response templates
+    - Focused on transparency, verification, and professional referrals
 ```
 
 ## User Preferences
