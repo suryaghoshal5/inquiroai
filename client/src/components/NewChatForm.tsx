@@ -74,10 +74,7 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
   const watchedRole = form.watch("role");
   const watchedProvider = form.watch("aiProvider");
   
-  // Debug form values
-  React.useEffect(() => {
-    console.log("Current form role value:", watchedRole);
-  }, [watchedRole]);
+
 
   // Update selected provider when form value changes
   React.useEffect(() => {

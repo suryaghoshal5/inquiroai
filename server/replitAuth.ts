@@ -149,6 +149,14 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     updatedAt: new Date(),
   };
 
+  // Ensure mock user exists in database
+  try {
+    const { storage } = await import("./storage");
+    await storage.upsertUser(mockUser);
+  } catch (error) {
+    console.error("Error creating mock user:", error);
+  }
+
   req.user = mockUser;
   next();
 };

@@ -65,10 +65,7 @@ export default function RoleSelector({ value, onChange }: RoleSelectorProps) {
               name="role"
               value={role.value}
               checked={isSelected}
-              onChange={(e) => {
-                console.log("Role selected:", e.target.value);
-                onChange(e.target.value);
-              }}
+              onChange={(e) => onChange(e.target.value)}
               className="peer sr-only"
             />
             <label 
@@ -78,10 +75,7 @@ export default function RoleSelector({ value, onChange }: RoleSelectorProps) {
                   ? "border-blue-500 bg-blue-50" 
                   : "border-gray-200 hover:border-blue-300"
               }`}
-              onClick={() => {
-                console.log("Label clicked for:", role.value);
-                onChange(role.value);
-              }}
+              onClick={() => onChange(role.value)}
             >
               <div className={`w-10 h-10 ${role.gradient} rounded-lg flex items-center justify-center mr-3`}>
                 <IconComponent className="w-5 h-5 text-white" />
