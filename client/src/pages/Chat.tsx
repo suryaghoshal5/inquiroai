@@ -39,9 +39,12 @@ export default function ChatPage() {
   // WebSocket connection
   useEffect(() => {
     if (isAuthenticated && chatId) {
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
-      const socket = new WebSocket(wsUrl);
+      // Use localhost for development
+      const wsUrl = `ws://localhost:5000/ws`;
+      console.log("Connecting to WebSocket:", wsUrl);
+      
+      try {
+        const socket = new WebSocket(wsUrl);
 
       socket.onopen = () => {
         console.log("WebSocket connected");
@@ -80,11 +83,23 @@ export default function ChatPage() {
         console.log("WebSocket disconnected");
       };
 
-      setWs(socket);
-
-      return () => {
-        socket.close();
+      socket.onerror = (error) => {
+        console.error("WebSocket error:", error);
       };
+
+        setWs(socket);
+
+        return () => {
+          socket.close();
+        };
+      } catch (error) {
+        console.error("Failed to create WebSocket connection:", error);
+        toast({
+          title: "Connection Error",
+          description: "Failed to establish WebSocket connection",
+          variant: "destructive",
+        });
+      }
     }
   }, [isAuthenticated, chatId]);
 
