@@ -20,7 +20,9 @@ import {
   Lightbulb, 
   Star, 
   Users, 
-  Bot 
+  Bot,
+  UserCheck,
+  Rocket
 } from "lucide-react";
 import type { ChatConfig, AIProvider } from "@/types";
 
@@ -167,7 +169,7 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-sm font-semibold text-gray-900 flex items-center">
-                    <i className="fas fa-user-tie mr-2 text-blue-600"></i>
+                    <UserCheck className="w-4 h-4 mr-2 text-blue-600" />
                     Role Selection
                   </FormLabel>
                   <FormControl>
