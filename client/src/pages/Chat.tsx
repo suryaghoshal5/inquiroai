@@ -36,72 +36,10 @@ export default function ChatPage() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  // WebSocket connection for typing indicators only
+  // WebSocket disabled - using HTTP for all communication
   useEffect(() => {
-    if (isAuthenticated && chatId) {
-      // Skip WebSocket for now due to connection issues
-      // TODO: Fix WebSocket connection in production environment
-      console.log("Skipping WebSocket connection due to environment issues");
-      /*
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
-      console.log("Connecting to WebSocket:", wsUrl);
-      
-      try {
-        const socket = new WebSocket(wsUrl);
-
-      socket.onopen = () => {
-        console.log("WebSocket connected");
-        socket.send(JSON.stringify({
-          type: "join_chat",
-          chatId: chatId,
-          userId: "dev-user"
-        }));
-      };
-
-      socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === "typing") {
-          // Handle typing indicators
-          console.log("Typing indicator:", data);
-        }
-        if (data.type === "message") {
-          // Handle new message
-          console.log("New message received:", data.message);
-          // Invalidate queries to refresh the chat
-          queryClient.invalidateQueries({ queryKey: [`/api/chats/${chatId}`] });
-          queryClient.invalidateQueries({ queryKey: ["/api/chats"] });
-        }
-        if (data.type === "error") {
-          // Handle error
-          console.error("WebSocket error:", data.message);
-          toast({
-            title: "Error",
-            description: data.message,
-            variant: "destructive",
-          });
-        }
-      };
-
-      socket.onclose = () => {
-        console.log("WebSocket disconnected");
-      };
-
-      socket.onerror = (error) => {
-        console.error("WebSocket error:", error);
-      };
-
-        setWs(socket);
-
-        return () => {
-          socket.close();
-        };
-      } catch (error) {
-        console.error("Failed to create WebSocket connection:", error);
-      }
-      */
-    }
-  }, [isAuthenticated, chatId]);
+    setWs(null);
+  }, []);
 
   const { data: chatData, isLoading: chatLoading } = useQuery({
     queryKey: [`/api/chats/${chatId}`],
@@ -221,7 +159,7 @@ export default function ChatPage() {
         messages={chatData.messages}
         onSendMessage={handleSendMessage}
         isLoading={sendMessageMutation.isPending}
-        ws={ws}
+        ws={null}
       />
     </div>
   );
