@@ -121,6 +121,11 @@ Changelog:
   - Resolved database foreign key constraint by creating mock user in database
   - Chat creation, WebSocket connection, and real-time messaging operational
   - Successfully tested end-to-end flow from form submission to chat interface
+  - Updated form validation from character-based to word-based limits for better UX
+  - Enhanced researcher role template with comprehensive McKinsey-style consulting prompt
+    - Added structured 5-level response framework with quality controls
+    - Included specialized research approaches and professional standards
+    - Delivers C-suite quality analysis with actionable recommendations
 ```
 
 ## User Preferences
