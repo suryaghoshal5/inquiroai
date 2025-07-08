@@ -36,14 +36,16 @@ export default function ChatPage() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  // WebSocket connection
+  // WebSocket connection for typing indicators only
   useEffect(() => {
     if (isAuthenticated && chatId) {
-      // Use correct WebSocket URL - always use the same protocol and host as the current page
+      // Skip WebSocket for now due to connection issues
+      // TODO: Fix WebSocket connection in production environment
+      console.log("Skipping WebSocket connection due to environment issues");
+      /*
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const wsUrl = `${protocol}//${window.location.host}/ws`;
       console.log("Connecting to WebSocket:", wsUrl);
-      console.log("Current location:", window.location.href);
       
       try {
         const socket = new WebSocket(wsUrl);
@@ -96,12 +98,8 @@ export default function ChatPage() {
         };
       } catch (error) {
         console.error("Failed to create WebSocket connection:", error);
-        toast({
-          title: "Connection Error",
-          description: "Failed to establish WebSocket connection",
-          variant: "destructive",
-        });
       }
+      */
     }
   }, [isAuthenticated, chatId]);
 
@@ -117,29 +115,38 @@ export default function ChatPage() {
     retry: false,
   });
 
-  const [isMessageSending, setIsMessageSending] = useState(false);
+  const sendMessageMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const response = await apiRequest("POST", `/api/chats/${chatId}/messages`, { content });
+      return response.json();
+    },
+    onSuccess: (newMessage) => {
+      // Invalidate chat messages to refetch
+      queryClient.invalidateQueries({ queryKey: [`/api/chats/${chatId}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/chats"] });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleSendMessage = (content: string) => {
-    if (!ws || !isAuthenticated || isMessageSending) return;
-    
-    console.log("Sending message via WebSocket:", content);
-    setIsMessageSending(true);
-    
-    // Send message via WebSocket
-    const messageData = {
-      type: "chat_message",
-      chatId: chatId,
-      content: content,
-      userId: "dev-user" // Use the mock user ID
-    };
-    
-    console.log("WebSocket message data:", messageData);
-    ws.send(JSON.stringify(messageData));
-    
-    // Reset sending state after a short delay
-    setTimeout(() => {
-      setIsMessageSending(false);
-    }, 1000);
+    sendMessageMutation.mutate(content);
   };
 
   const handleChatSelect = (chatId: number) => {
@@ -213,7 +220,7 @@ export default function ChatPage() {
         chat={chatData.chat}
         messages={chatData.messages}
         onSendMessage={handleSendMessage}
-        isLoading={isMessageSending}
+        isLoading={sendMessageMutation.isPending}
         ws={ws}
       />
     </div>
