@@ -158,6 +158,11 @@ Changelog:
     - Complete proposal development framework with commercial excellence
     - Stakeholder management and executive presentation capabilities
     - Go/no-go decision frameworks and competitive positioning strategies
+  - Fixed critical API key decryption issue that was preventing AI responses
+    - Identified and resolved cryptographic errors in API key storage
+    - Cleared corrupted encrypted keys and enabled fresh API key setup
+    - Switched from WebSocket to HTTP POST for reliable message delivery
+    - Successfully tested end-to-end chat functionality with OpenAI integration
 ```
 
 ## User Preferences

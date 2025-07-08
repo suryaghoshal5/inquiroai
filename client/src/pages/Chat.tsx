@@ -159,7 +159,7 @@ export default function ChatPage() {
         messages={chatData.messages}
         onSendMessage={handleSendMessage}
         isLoading={sendMessageMutation.isPending}
-        ws={null}
+
       />
     </div>
   );

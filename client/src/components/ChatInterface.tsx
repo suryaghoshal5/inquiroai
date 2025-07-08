@@ -21,15 +21,13 @@ interface ChatInterfaceProps {
   messages: Message[];
   onSendMessage: (content: string) => void;
   isLoading: boolean;
-  ws: WebSocket | null;
 }
 
 export default function ChatInterface({ 
   chat, 
   messages, 
   onSendMessage, 
-  isLoading,
-  ws 
+  isLoading
 }: ChatInterfaceProps) {
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
