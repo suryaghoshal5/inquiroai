@@ -131,6 +131,11 @@ Changelog:
     - Included AARRR framework, growth hacking, and PMF validation approaches
     - Added decision-making frameworks and experimentation methodologies
     - Focused on rapid iteration, resource efficiency, and startup urgency
+  - Enhanced developer role template with full-stack architect specialization
+    - Added comprehensive technical expertise across frontend, backend, and DevOps
+    - Included system architecture, microservices, and cloud platform knowledge
+    - Added technology decision frameworks and quality control checklists
+    - Focused on scalable, production-ready solutions with clean code principles
 ```
 
 ## User Preferences
