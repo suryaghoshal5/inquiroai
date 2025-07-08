@@ -17,7 +17,7 @@ export default function ChatPage() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
-  const [ws, setWs] = useState<WebSocket | null>(null);
+
 
   const chatId = parseInt(id || "0");
 
@@ -36,10 +36,7 @@ export default function ChatPage() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  // WebSocket disabled - using HTTP for all communication
-  useEffect(() => {
-    setWs(null);
-  }, []);
+
 
   const { data: chatData, isLoading: chatLoading } = useQuery({
     queryKey: [`/api/chats/${chatId}`],

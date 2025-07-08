@@ -48,29 +48,16 @@ export default function ChatInterface({
     }
   }, [inputMessage]);
 
-  // Handle typing indicators via WebSocket
+  // Typing indicator disabled (no WebSocket)
   useEffect(() => {
-    if (ws && isTyping) {
-      ws.send(JSON.stringify({
-        type: "typing",
-        chatId: chat.id,
-        userId: "current_user",
-        isTyping: true
-      }));
-
+    if (isTyping) {
       const timer = setTimeout(() => {
         setIsTyping(false);
-        ws.send(JSON.stringify({
-          type: "typing",
-          chatId: chat.id,
-          userId: "current_user",
-          isTyping: false
-        }));
       }, 1000);
 
       return () => clearTimeout(timer);
     }
-  }, [ws, isTyping, chat.id]);
+  }, [isTyping]);
 
   const handleSend = () => {
     if (!inputMessage.trim() || isLoading) return;
