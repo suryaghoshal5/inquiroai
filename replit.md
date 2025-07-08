@@ -112,6 +112,15 @@ InquiroAI is a web-based AI prompt management platform that enables users to cre
 ```
 Changelog:
 - July 04, 2025. Initial setup
+- July 07, 2025. Disabled authentication for development - using mock user to focus on core features
+  - Bypassed Passport.js and setupAuth() function
+  - Created mock user with id "dev-user" for all authenticated requests
+  - Updated frontend useAuth hook to use server endpoint
+- July 08, 2025. Core chat functionality working
+  - Fixed role selector with Lucide icons and proper styling
+  - Resolved database foreign key constraint by creating mock user in database
+  - Chat creation, WebSocket connection, and real-time messaging operational
+  - Successfully tested end-to-end flow from form submission to chat interface
 ```
 
 ## User Preferences
