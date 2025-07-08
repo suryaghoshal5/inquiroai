@@ -1,4 +1,4 @@
-import { Search, TrendingUp, Code, PenTool, Palette, Plus } from "lucide-react";
+import { Search, TrendingUp, Code, PenTool, Palette, Briefcase, Plus } from "lucide-react";
 import type { RoleOption } from "@/types";
 
 interface RoleSelectorProps {
@@ -38,9 +38,16 @@ const roleOptions = [
   {
     value: "designer",
     label: "Designer",
-    description: "Creative feedback",
+    description: "UI/UX design expertise",
     icon: Palette,
     gradient: "bg-gradient-to-r from-pink-500 to-rose-500"
+  },
+  {
+    value: "presales_consultant",
+    label: "Presales Consultant",
+    description: "RFP & proposal specialist",
+    icon: Briefcase,
+    gradient: "bg-gradient-to-r from-indigo-500 to-purple-500"
   },
   {
     value: "custom",

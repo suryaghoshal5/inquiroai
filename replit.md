@@ -152,6 +152,12 @@ Changelog:
     - Included content safety guidelines and appropriate response patterns
     - Created clear decline scenarios and example response templates
     - Focused on transparency, verification, and professional referrals
+  - Added sixth professional role: Presales Consultant
+    - McKinsey-level presales consultant and RFP response specialist
+    - Comprehensive RFP analysis, strategy, and competitive differentiation
+    - Complete proposal development framework with commercial excellence
+    - Stakeholder management and executive presentation capabilities
+    - Go/no-go decision frameworks and competitive positioning strategies
 ```
 
 ## User Preferences

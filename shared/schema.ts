@@ -137,7 +137,7 @@ export type RolePrompt = typeof rolePrompts.$inferSelect;
 
 // Chat configuration schema
 export const chatConfigSchema = z.object({
-  role: z.enum(["researcher", "product_manager", "developer", "content_writer", "designer", "custom"]),
+  role: z.enum(["researcher", "product_manager", "developer", "content_writer", "designer", "presales_consultant", "custom"]),
   customRole: z.string().optional(),
   context: z.string().max(5000),
   task: z.string().max(200),

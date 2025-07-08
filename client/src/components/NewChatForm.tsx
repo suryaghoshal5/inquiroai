@@ -32,7 +32,7 @@ const countWords = (text: string): number => {
 };
 
 const chatConfigSchema = z.object({
-  role: z.enum(["researcher", "product_manager", "developer", "content_writer", "designer", "custom"]),
+  role: z.enum(["researcher", "product_manager", "developer", "content_writer", "designer", "presales_consultant", "custom"]),
   customRole: z.string().optional(),
   context: z.string().refine(val => countWords(val) <= 1000, "Context must be 1000 words or less"),
   task: z.string().refine(val => countWords(val) <= 200, "Task must be 200 words or less"),

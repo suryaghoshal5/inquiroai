@@ -56,7 +56,7 @@ export interface AIProvider {
 }
 
 export interface ChatConfig {
-  role: "researcher" | "product_manager" | "developer" | "content_writer" | "designer" | "custom";
+  role: "researcher" | "product_manager" | "developer" | "content_writer" | "designer" | "presales_consultant" | "custom";
   customRole?: string;
   context: string;
   task: string;
