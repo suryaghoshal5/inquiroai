@@ -26,16 +26,21 @@ import {
 } from "lucide-react";
 import type { ChatConfig, AIProvider } from "@/types";
 
+// Helper function to count words
+const countWords = (text: string): number => {
+  return text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+};
+
 const chatConfigSchema = z.object({
   role: z.enum(["researcher", "product_manager", "developer", "content_writer", "designer", "custom"]),
   customRole: z.string().optional(),
-  context: z.string().max(5000, "Context must be 5000 characters or less"),
-  task: z.string().max(200, "Task must be 200 characters or less"),
-  inputData: z.string().max(5000, "Input data must be 5000 characters or less"),
-  constraints: z.string().max(200, "Constraints must be 200 characters or less"),
-  examples: z.string().max(5000, "Examples must be 5000 characters or less"),
-  optional: z.string().max(200, "Optional field must be 200 characters or less"),
-  audience: z.string().max(200, "Audience must be 200 characters or less"),
+  context: z.string().refine(val => countWords(val) <= 1000, "Context must be 1000 words or less"),
+  task: z.string().refine(val => countWords(val) <= 200, "Task must be 200 words or less"),
+  inputData: z.string().refine(val => countWords(val) <= 1000, "Input data must be 1000 words or less"),
+  constraints: z.string().refine(val => countWords(val) <= 200, "Constraints must be 200 words or less"),
+  examples: z.string().refine(val => countWords(val) <= 1000, "Examples must be 1000 words or less"),
+  optional: z.string().refine(val => countWords(val) <= 200, "Optional field must be 200 words or less"),
+  audience: z.string().refine(val => countWords(val) <= 200, "Audience must be 200 words or less"),
   aiProvider: z.enum(["openai", "gemini", "claude", "grok"]),
   aiModel: z.string().min(1, "AI model is required"),
   title: z.string().min(1, "Title is required").max(100, "Title must be 100 characters or less"),
@@ -101,9 +106,9 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
     form.setValue(fieldName, newValue);
   };
 
-  const getCharacterCount = (field: string) => {
+  const getWordCount = (field: string) => {
     const value = form.watch(field as keyof ChatConfig) as string;
-    return value ? value.length : 0;
+    return value ? countWords(value) : 0;
   };
 
   const getRecommendedModel = () => {
@@ -153,7 +158,7 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                   <div className="flex justify-between items-center mt-2">
                     <FormMessage />
                     <span className="text-sm text-gray-400">
-                      {getCharacterCount("title")} / 100
+                      {form.watch("title")?.length || 0} / 100 chars
                     </span>
                   </div>
                 </FormItem>
@@ -216,7 +221,7 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                 <FormItem>
                   <FormLabel className="text-sm font-semibold text-gray-900 flex items-center">
                     <Info className="w-4 h-4 mr-2 text-blue-600" />
-                    Context <span className="text-gray-500 font-normal ml-1">(5000 chars max)</span>
+                    Context <span className="text-gray-500 font-normal ml-1">(1000 words max)</span>
                   </FormLabel>
                   <FormControl>
                     <Textarea
@@ -228,8 +233,8 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                   </FormControl>
                   <div className="flex justify-between items-center mt-2">
                     <FormMessage />
-                    <span className={`text-sm ${getCharacterCount("context") > 4500 ? "text-red-500" : "text-gray-400"}`}>
-                      {getCharacterCount("context")} / 5000
+                    <span className={`text-sm ${getWordCount("context") > 900 ? "text-red-500" : "text-gray-400"}`}>
+                      {getWordCount("context")} / 1000 words
                     </span>
                   </div>
                 </FormItem>
@@ -248,7 +253,7 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                 <FormItem>
                   <FormLabel className="text-sm font-semibold text-gray-900 flex items-center">
                     <ListTodo className="w-4 h-4 mr-2 text-blue-600" />
-                    Task <span className="text-gray-500 font-normal ml-1">(200 chars max)</span>
+                    Task <span className="text-gray-500 font-normal ml-1">(200 words max)</span>
                   </FormLabel>
                   <FormControl>
                     <Input
@@ -259,8 +264,8 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                   </FormControl>
                   <div className="flex justify-between items-center mt-2">
                     <FormMessage />
-                    <span className={`text-sm ${getCharacterCount("task") > 180 ? "text-red-500" : "text-gray-400"}`}>
-                      {getCharacterCount("task")} / 200
+                    <span className={`text-sm ${getWordCount("task") > 180 ? "text-red-500" : "text-gray-400"}`}>
+                      {getWordCount("task")} / 200 words
                     </span>
                   </div>
                 </FormItem>
@@ -279,7 +284,7 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                 <FormItem>
                   <FormLabel className="text-sm font-semibold text-gray-900 flex items-center">
                     <Database className="w-4 h-4 mr-2 text-blue-600" />
-                    Input Data <span className="text-gray-500 font-normal ml-1">(5000 chars max)</span>
+                    Input Data <span className="text-gray-500 font-normal ml-1">(1000 words max)</span>
                   </FormLabel>
                   <FormControl>
                     <Textarea
@@ -294,8 +299,8 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                       onUpload={(content) => handleFileUpload(content, 'inputData')}
                       acceptedTypes={['.pdf', '.xlsx', '.xls', '.docx', '.doc', '.md', '.txt']}
                     />
-                    <span className={`text-sm ${getCharacterCount("inputData") > 4500 ? "text-red-500" : "text-gray-400"}`}>
-                      {getCharacterCount("inputData")} / 5000
+                    <span className={`text-sm ${getWordCount("inputData") > 900 ? "text-red-500" : "text-gray-400"}`}>
+                      {getWordCount("inputData")} / 1000 words
                     </span>
                   </div>
                   <FormMessage />
@@ -315,7 +320,7 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                 <FormItem>
                   <FormLabel className="text-sm font-semibold text-gray-900 flex items-center">
                     <AlertTriangle className="w-4 h-4 mr-2 text-blue-600" />
-                    Constraints <span className="text-gray-500 font-normal ml-1">(200 chars max)</span>
+                    Constraints <span className="text-gray-500 font-normal ml-1">(200 words max)</span>
                   </FormLabel>
                   <FormControl>
                     <Input
@@ -326,8 +331,8 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                   </FormControl>
                   <div className="flex justify-between items-center mt-2">
                     <FormMessage />
-                    <span className={`text-sm ${getCharacterCount("constraints") > 180 ? "text-red-500" : "text-gray-400"}`}>
-                      {getCharacterCount("constraints")} / 200
+                    <span className={`text-sm ${getWordCount("constraints") > 180 ? "text-red-500" : "text-gray-400"}`}>
+                      {getWordCount("constraints")} / 200 words
                     </span>
                   </div>
                 </FormItem>
@@ -346,7 +351,7 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                 <FormItem>
                   <FormLabel className="text-sm font-semibold text-gray-900 flex items-center">
                     <Lightbulb className="w-4 h-4 mr-2 text-blue-600" />
-                    Examples <span className="text-gray-500 font-normal ml-1">(5000 chars max)</span>
+                    Examples <span className="text-gray-500 font-normal ml-1">(1000 words max)</span>
                   </FormLabel>
                   <FormControl>
                     <Textarea
@@ -361,8 +366,8 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                       onUpload={(content) => handleFileUpload(content, 'examples')}
                       acceptedTypes={['.pdf', '.xlsx', '.xls', '.docx', '.doc', '.md', '.txt']}
                     />
-                    <span className={`text-sm ${getCharacterCount("examples") > 4500 ? "text-red-500" : "text-gray-400"}`}>
-                      {getCharacterCount("examples")} / 5000
+                    <span className={`text-sm ${getWordCount("examples") > 900 ? "text-red-500" : "text-gray-400"}`}>
+                      {getWordCount("examples")} / 1000 words
                     </span>
                   </div>
                   <FormMessage />
@@ -383,7 +388,7 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                   <FormItem>
                     <FormLabel className="text-sm font-semibold text-gray-900 flex items-center">
                       <Star className="w-4 h-4 mr-2 text-blue-600" />
-                      Optional <span className="text-gray-500 font-normal ml-1">(200 chars max)</span>
+                      Optional <span className="text-gray-500 font-normal ml-1">(200 words max)</span>
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -394,8 +399,8 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                     </FormControl>
                     <div className="flex justify-between items-center mt-2">
                       <FormMessage />
-                      <span className={`text-sm ${getCharacterCount("optional") > 180 ? "text-red-500" : "text-gray-400"}`}>
-                        {getCharacterCount("optional")} / 200
+                      <span className={`text-sm ${getWordCount("optional") > 180 ? "text-red-500" : "text-gray-400"}`}>
+                        {getWordCount("optional")} / 200 words
                       </span>
                     </div>
                   </FormItem>
@@ -413,7 +418,7 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                   <FormItem>
                     <FormLabel className="text-sm font-semibold text-gray-900 flex items-center">
                       <Users className="w-4 h-4 mr-2 text-blue-600" />
-                      Audience <span className="text-gray-500 font-normal ml-1">(200 chars max)</span>
+                      Audience <span className="text-gray-500 font-normal ml-1">(200 words max)</span>
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -424,8 +429,8 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                     </FormControl>
                     <div className="flex justify-between items-center mt-2">
                       <FormMessage />
-                      <span className={`text-sm ${getCharacterCount("audience") > 180 ? "text-red-500" : "text-gray-400"}`}>
-                        {getCharacterCount("audience")} / 200
+                      <span className={`text-sm ${getWordCount("audience") > 180 ? "text-red-500" : "text-gray-400"}`}>
+                        {getWordCount("audience")} / 200 words
                       </span>
                     </div>
                   </FormItem>
