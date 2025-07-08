@@ -56,17 +56,33 @@ export default function RoleSelector({ value, onChange }: RoleSelectorProps) {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
       {roleOptions.map((role) => {
         const IconComponent = role.icon;
+        const isSelected = value === role.value;
         return (
           <div key={role.value} className="relative">
             <input
+              id={`role-${role.value}`}
               type="radio"
               name="role"
               value={role.value}
-              checked={value === role.value}
-              onChange={(e) => onChange(e.target.value)}
+              checked={isSelected}
+              onChange={(e) => {
+                console.log("Role selected:", e.target.value);
+                onChange(e.target.value);
+              }}
               className="peer sr-only"
             />
-            <label className="flex items-center p-4 rounded-xl border-2 border-gray-200 cursor-pointer hover:border-blue-500 peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all duration-200">
+            <label 
+              htmlFor={`role-${role.value}`}
+              className={`flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                isSelected 
+                  ? "border-blue-500 bg-blue-50" 
+                  : "border-gray-200 hover:border-blue-300"
+              }`}
+              onClick={() => {
+                console.log("Label clicked for:", role.value);
+                onChange(role.value);
+              }}
+            >
               <div className={`w-10 h-10 ${role.gradient} rounded-lg flex items-center justify-center mr-3`}>
                 <IconComponent className="w-5 h-5 text-white" />
               </div>
