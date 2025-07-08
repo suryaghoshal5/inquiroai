@@ -333,6 +333,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           });
         }
+        
+        if (data.type === 'chat_message') {
+          // Handle real-time chat messages
+          const { chatId, content, userId } = data;
+          
+          // Get chat details
+          const chat = await storage.getChat(chatId);
+          if (!chat) {
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: 'Chat not found'
+            }));
+            return;
+          }
+          
+          // Save user message
+          const userMessage = await storage.createMessage({
+            chatId,
+            role: "user",
+            content,
+            metadata: {}
+          });
+          
+          // Broadcast user message to all clients in this chat
+          wss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN &&
+                (client as any).chatId === chatId) {
+              client.send(JSON.stringify({
+                type: 'message',
+                message: userMessage
+              }));
+            }
+          });
+          
+          // Generate AI response
+          try {
+            const messages = await storage.getChatMessages(chatId);
+            const context = messages.slice(-10).map(msg => msg.content);
+            
+            const aiResponse = await AIOrchestrator.generateResponse(
+              chat.aiProvider,
+              chat.aiModel,
+              userId,
+              content,
+              chat.configuration?.systemPrompt || "",
+              context
+            );
+            
+            // Save AI response
+            const aiMessage = await storage.createMessage({
+              chatId,
+              role: "assistant",
+              content: aiResponse,
+              metadata: { provider: chat.aiProvider, model: chat.aiModel }
+            });
+            
+            // Broadcast AI response to all clients in this chat
+            wss.clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN &&
+                  (client as any).chatId === chatId) {
+                client.send(JSON.stringify({
+                  type: 'message',
+                  message: aiMessage
+                }));
+              }
+            });
+            
+            // Update chat timestamp
+            await storage.updateChat(chatId, { updatedAt: new Date() });
+            
+          } catch (error) {
+            console.error("Error generating AI response:", error);
+            
+            // Send error to all clients in this chat
+            wss.clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN &&
+                  (client as any).chatId === chatId) {
+                client.send(JSON.stringify({
+                  type: 'error',
+                  message: 'Failed to generate AI response. Please check your API key settings.'
+                }));
+              }
+            });
+          }
+        }
       } catch (error) {
         console.error('WebSocket message error:', error);
       }

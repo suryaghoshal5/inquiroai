@@ -48,7 +48,7 @@ export default function ChatPage() {
         socket.send(JSON.stringify({
           type: "join_chat",
           chatId: chatId,
-          userId: "current_user"
+          userId: "dev-user"
         }));
       };
 
@@ -57,6 +57,22 @@ export default function ChatPage() {
         if (data.type === "typing") {
           // Handle typing indicators
           console.log("Typing indicator:", data);
+        }
+        if (data.type === "message") {
+          // Handle new message
+          console.log("New message received:", data.message);
+          // Invalidate queries to refresh the chat
+          queryClient.invalidateQueries({ queryKey: [`/api/chats/${chatId}`] });
+          queryClient.invalidateQueries({ queryKey: ["/api/chats"] });
+        }
+        if (data.type === "error") {
+          // Handle error
+          console.error("WebSocket error:", data.message);
+          toast({
+            title: "Error",
+            description: data.message,
+            variant: "destructive",
+          });
         }
       };
 
@@ -84,38 +100,25 @@ export default function ChatPage() {
     retry: false,
   });
 
-  const sendMessageMutation = useMutation({
-    mutationFn: async (content: string) => {
-      const response = await apiRequest("POST", `/api/chats/${chatId}/messages`, { content });
-      return response.json();
-    },
-    onSuccess: (newMessage) => {
-      // Invalidate chat messages to refetch
-      queryClient.invalidateQueries({ queryKey: [`/api/chats/${chatId}`] });
-      queryClient.invalidateQueries({ queryKey: ["/api/chats"] });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
+  const [isMessageSending, setIsMessageSending] = useState(false);
 
   const handleSendMessage = (content: string) => {
-    sendMessageMutation.mutate(content);
+    if (!ws || !isAuthenticated || isMessageSending) return;
+    
+    setIsMessageSending(true);
+    
+    // Send message via WebSocket
+    ws.send(JSON.stringify({
+      type: "chat_message",
+      chatId: chatId,
+      content: content,
+      userId: "dev-user" // Use the mock user ID
+    }));
+    
+    // Reset sending state after a short delay
+    setTimeout(() => {
+      setIsMessageSending(false);
+    }, 1000);
   };
 
   const handleChatSelect = (chatId: number) => {
@@ -189,7 +192,7 @@ export default function ChatPage() {
         chat={chatData.chat}
         messages={chatData.messages}
         onSendMessage={handleSendMessage}
-        isLoading={sendMessageMutation.isPending}
+        isLoading={isMessageSending}
         ws={ws}
       />
     </div>
