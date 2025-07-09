@@ -168,6 +168,11 @@ Changelog:
     - AI generates comprehensive initial response based on complete chat configuration
     - Initial response immediately available when entering new chat conversations
     - Seamless integration with existing chat messaging system
+  - Enhanced chat interface with improved readability and markdown support
+    - Changed chat bubble colors: blue for user messages, light gray for AI responses
+    - Added react-markdown library for proper formatting of AI responses
+    - Supports headers, lists, code blocks, bold/italic text, and inline code
+    - Fixed console errors related to markdown rendering className warnings
 ```
 
 ## User Preferences

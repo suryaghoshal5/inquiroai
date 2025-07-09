@@ -170,7 +170,6 @@ export default function ChatInterface({
                   <div className="text-sm leading-relaxed">
                     {message.role === 'assistant' ? (
                       <ReactMarkdown 
-                        className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-code:text-blue-600 prose-code:bg-blue-50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-ul:text-gray-700 prose-ol:text-gray-700 prose-li:text-gray-700"
                         components={{
                           h1: ({children}) => <h1 className="text-lg font-bold text-gray-900 mb-2">{children}</h1>,
                           h2: ({children}) => <h2 className="text-md font-semibold text-gray-900 mb-2">{children}</h2>,
