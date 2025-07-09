@@ -173,6 +173,11 @@ Changelog:
     - Added react-markdown library for proper formatting of AI responses
     - Supports headers, lists, code blocks, bold/italic text, and inline code
     - Fixed console errors related to markdown rendering className warnings
+  - Implemented settings and share functionality for chat interface
+    - Settings button opens dialog displaying complete chat configuration template
+    - Share button provides export options: PDF, Markdown, and Word formats
+    - Export includes chat metadata and full conversation history
+    - Files automatically download with sanitized filenames
 ```
 
 ## User Preferences

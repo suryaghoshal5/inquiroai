@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { 
   Share, 
   Settings, 
@@ -11,7 +13,10 @@ import {
   ThumbsDown, 
   Paperclip,
   Send,
-  MoreHorizontal
+  MoreHorizontal,
+  Download,
+  FileText,
+  File
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
@@ -32,6 +37,7 @@ export default function ChatInterface({
 }: ChatInterfaceProps) {
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -120,6 +126,48 @@ export default function ChatInterface({
     });
   };
 
+  const exportChat = (format: 'pdf' | 'markdown' | 'word') => {
+    const chatContent = messages.map(msg => {
+      const timestamp = formatTime(msg.createdAt);
+      const role = msg.role === 'user' ? 'You' : 'AI Assistant';
+      return `[${timestamp}] ${role}:\n${msg.content}\n\n`;
+    }).join('');
+
+    const fullContent = `Chat: ${chat.title}\nRole: ${chat.role === 'custom' ? chat.customRole : chat.role.replace('_', ' ')}\nModel: ${chat.aiModel}\nCreated: ${new Date(chat.createdAt).toLocaleString()}\n\n=== CONVERSATION ===\n\n${chatContent}`;
+
+    if (format === 'markdown') {
+      const blob = new Blob([fullContent], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${chat.title.replace(/[^a-zA-Z0-9]/g, '_')}.md`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } else if (format === 'word') {
+      const blob = new Blob([fullContent], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${chat.title.replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } else if (format === 'pdf') {
+      // For PDF, we'll use a simple text approach for now
+      const blob = new Blob([fullContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${chat.title.replace(/[^a-zA-Z0-9]/g, '_')}.txt`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    toast({
+      title: "Chat Exported",
+      description: `Chat exported as ${format.toUpperCase()}`,
+    });
+  };
+
   return (
     <div className="flex-1 flex flex-col">
       {/* Chat Header */}
@@ -138,12 +186,99 @@ export default function ChatInterface({
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="sm" title="Share Chat">
-              <Share className="w-4 h-4 text-gray-500" />
-            </Button>
-            <Button variant="ghost" size="sm" title="Chat Settings">
-              <Settings className="w-4 h-4 text-gray-500" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" title="Share Chat">
+                  <Share className="w-4 h-4 text-gray-500" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => exportChat('pdf')}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Export as PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportChat('markdown')}>
+                  <File className="w-4 h-4 mr-2" />
+                  Export as Markdown
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportChat('word')}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Export as Word
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <Dialog open={showSettings} onOpenChange={setShowSettings}>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm" title="Chat Settings">
+                  <Settings className="w-4 h-4 text-gray-500" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Chat Configuration</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Title</label>
+                    <div className="mt-1 p-3 bg-gray-50 rounded-md text-sm">{chat.title}</div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Role</label>
+                    <div className="mt-1 p-3 bg-gray-50 rounded-md text-sm">
+                      {chat.role === 'custom' ? chat.customRole : chat.role.replace('_', ' ')}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Context</label>
+                    <div className="mt-1 p-3 bg-gray-50 rounded-md text-sm max-h-32 overflow-y-auto">
+                      {chat.context || 'No context provided'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Task</label>
+                    <div className="mt-1 p-3 bg-gray-50 rounded-md text-sm max-h-32 overflow-y-auto">
+                      {chat.task || 'No task provided'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Input Data</label>
+                    <div className="mt-1 p-3 bg-gray-50 rounded-md text-sm max-h-32 overflow-y-auto">
+                      {chat.inputData || 'No input data provided'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Constraints</label>
+                    <div className="mt-1 p-3 bg-gray-50 rounded-md text-sm max-h-32 overflow-y-auto">
+                      {chat.constraints || 'No constraints provided'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Examples</label>
+                    <div className="mt-1 p-3 bg-gray-50 rounded-md text-sm max-h-32 overflow-y-auto">
+                      {chat.examples || 'No examples provided'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Target Audience</label>
+                    <div className="mt-1 p-3 bg-gray-50 rounded-md text-sm">
+                      {chat.audience || 'No audience specified'}
+                    </div>
+                  </div>
+                  <div className="flex space-x-4">
+                    <div className="flex-1">
+                      <label className="text-sm font-medium text-gray-700">AI Provider</label>
+                      <div className="mt-1 p-3 bg-gray-50 rounded-md text-sm">{chat.aiProvider}</div>
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-sm font-medium text-gray-700">Model</label>
+                      <div className="mt-1 p-3 bg-gray-50 rounded-md text-sm">{chat.aiModel}</div>
+                    </div>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            
             <Button variant="ghost" size="sm">
               <MoreHorizontal className="w-4 h-4 text-gray-500" />
             </Button>
