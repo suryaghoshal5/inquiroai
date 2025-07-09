@@ -49,6 +49,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aiModel: config.aiModel,
         configuration: { systemPrompt: fullPrompt }
       });
+
+      // Send the structured prompt to AI and get initial response
+      try {
+        console.log("Generating initial AI response for chat", chat.id);
+        const aiResponse = await AIOrchestrator.generateResponse(
+          userId,
+          config.aiProvider,
+          config.aiModel,
+          fullPrompt,
+          []
+        );
+        
+        console.log("AI response generated successfully, saving to database");
+        // Save the AI's initial response
+        await storage.createMessage({
+          chatId: chat.id,
+          role: "assistant",
+          content: aiResponse,
+          metadata: { provider: config.aiProvider, model: config.aiModel }
+        });
+        console.log("Initial AI response saved successfully");
+      } catch (error) {
+        console.error("Error generating initial AI response:", error);
+        // Continue without initial response - user can still chat
+      }
       
       res.json(chat);
     } catch (error) {
