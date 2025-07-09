@@ -14,6 +14,7 @@ import {
   MoreHorizontal
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import ReactMarkdown from "react-markdown";
 import type { Chat, Message } from "@/types";
 
 interface ChatInterfaceProps {
@@ -162,12 +163,33 @@ export default function ChatInterface({
                 <div
                   className={`rounded-2xl p-4 shadow-sm ${
                     message.role === 'user'
-                      ? 'chat-bubble-user text-white rounded-br-md'
-                      : 'chat-bubble-ai text-white rounded-bl-md'
+                      ? 'bg-blue-600 text-white rounded-br-md'
+                      : 'bg-gray-50 border border-gray-200 text-gray-900 rounded-bl-md'
                   }`}
                 >
-                  <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                    {message.content}
+                  <div className="text-sm leading-relaxed">
+                    {message.role === 'assistant' ? (
+                      <ReactMarkdown 
+                        className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-code:text-blue-600 prose-code:bg-blue-50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-ul:text-gray-700 prose-ol:text-gray-700 prose-li:text-gray-700"
+                        components={{
+                          h1: ({children}) => <h1 className="text-lg font-bold text-gray-900 mb-2">{children}</h1>,
+                          h2: ({children}) => <h2 className="text-md font-semibold text-gray-900 mb-2">{children}</h2>,
+                          h3: ({children}) => <h3 className="text-sm font-medium text-gray-900 mb-1">{children}</h3>,
+                          p: ({children}) => <p className="text-gray-700 mb-2 last:mb-0">{children}</p>,
+                          ul: ({children}) => <ul className="list-disc pl-4 mb-2 text-gray-700">{children}</ul>,
+                          ol: ({children}) => <ol className="list-decimal pl-4 mb-2 text-gray-700">{children}</ol>,
+                          li: ({children}) => <li className="text-gray-700 mb-1">{children}</li>,
+                          code: ({children}) => <code className="bg-blue-50 text-blue-600 px-1 py-0.5 rounded text-xs font-mono">{children}</code>,
+                          pre: ({children}) => <pre className="bg-gray-100 p-3 rounded-lg overflow-x-auto mb-2">{children}</pre>,
+                          strong: ({children}) => <strong className="font-semibold text-gray-900">{children}</strong>,
+                          em: ({children}) => <em className="italic text-gray-700">{children}</em>
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    ) : (
+                      <div className="whitespace-pre-wrap">{message.content}</div>
+                    )}
                   </div>
                 </div>
                 <div className={`mt-2 flex items-center ${message.role === 'user' ? 'justify-end' : 'justify-between'}`}>
