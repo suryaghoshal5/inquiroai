@@ -20,12 +20,18 @@ export class FileProcessor {
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'application/msword',
         'text/markdown',
-        'text/plain'
+        'text/plain',
+        'text/x-markdown'
       ];
       
-      if (allowedTypes.includes(file.mimetype)) {
+      // Also check file extension for markdown files
+      const fileExtension = file.originalname.split('.').pop()?.toLowerCase();
+      const allowedExtensions = ['pdf', 'xlsx', 'xls', 'docx', 'doc', 'md', 'txt'];
+      
+      if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(fileExtension || '')) {
         cb(null, true);
       } else {
+        console.log(`Rejected file: ${file.originalname}, mimetype: ${file.mimetype}, extension: ${fileExtension}`);
         cb(new Error('Unsupported file type'), false);
       }
     },
@@ -64,10 +70,16 @@ export class FileProcessor {
   }
 
   private static async processPDF(filePath: string): Promise<string> {
-    const pdf = await import("pdf-parse");
-    const dataBuffer = await fs.readFile(filePath);
-    const data = await pdf.default(dataBuffer);
-    return data.text;
+    try {
+      const pdf = await import("pdf-parse");
+      const dataBuffer = await fs.readFile(filePath);
+      const data = await pdf.default(dataBuffer);
+      return data.text;
+    } catch (error) {
+      console.error('PDF processing error:', error);
+      // Fallback: return a message indicating the file was uploaded but couldn't be processed
+      return `[PDF file uploaded: ${path.basename(filePath)}]\n\nNote: PDF content could not be extracted automatically. Please manually describe the content of this PDF file if needed for the AI analysis.`;
+    }
   }
 
   private static async processExcel(filePath: string): Promise<string> {
