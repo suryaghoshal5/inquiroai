@@ -178,6 +178,15 @@ Changelog:
     - Share button provides export options: PDF, Markdown, and Word formats
     - Export includes chat metadata and full conversation history
     - Files automatically download with sanitized filenames
+  - Enhanced document upload functionality with visual indicators
+    - Fixed file processing dependencies (pdf-parse, xlsx, mammoth) for all supported formats
+    - Implemented comprehensive file type validation for PDF, Excel, Word, Markdown, and text files
+    - Added visual upload indicators with file-specific icons and success messages
+    - Created uploaded files list showing file names, sizes, and removal options
+    - Added green success indicators with checkmarks for successful uploads
+    - Enhanced drag-and-drop functionality with visual feedback overlay
+    - Implemented graceful error handling for PDF processing with fallback messages
+    - All document upload functionality now working reliably across all supported file types
 ```
 
 ## User Preferences
