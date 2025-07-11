@@ -148,7 +148,7 @@ export const chatConfigSchema = z.object({
   audience: z.string().max(200),
   aiProvider: z.enum(["openai", "gemini", "claude", "grok"]),
   aiModel: z.string(),
-  title: z.string().min(1).max(100),
+  title: z.string().max(100).optional(),
 });
 
 export type ChatConfig = z.infer<typeof chatConfigSchema>;

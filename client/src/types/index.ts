@@ -67,7 +67,7 @@ export interface ChatConfig {
   audience: string;
   aiProvider: "openai" | "gemini" | "claude" | "grok";
   aiModel: string;
-  title: string;
+  title?: string;
 }
 
 export interface RoleOption {

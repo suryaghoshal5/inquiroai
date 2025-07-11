@@ -43,7 +43,7 @@ const chatConfigSchema = z.object({
   audience: z.string().refine(val => countWords(val) <= 200, "Audience must be 200 words or less"),
   aiProvider: z.enum(["openai", "gemini", "claude", "grok"]),
   aiModel: z.string().min(1, "AI model is required"),
-  title: z.string().min(1, "Title is required").max(100, "Title must be 100 characters or less"),
+  title: z.string().max(100, "Title must be 100 characters or less").optional(),
 });
 
 interface NewChatFormProps {

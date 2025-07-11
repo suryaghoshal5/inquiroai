@@ -35,7 +35,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const chat = await storage.createChat({
         userId,
-        title: config.title,
+        title: config.title || `${config.role.charAt(0).toUpperCase() + config.role.slice(1).replace('_', ' ')} Chat`,
         role: config.role,
         customRole: config.customRole,
         context: config.context,
