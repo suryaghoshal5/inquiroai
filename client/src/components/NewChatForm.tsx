@@ -516,14 +516,7 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
         </Card>
 
         {/* Action Buttons */}
-        <div className="flex justify-end space-x-4 pt-6">
-          <Button
-            type="button"
-            variant="outline"
-            className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50"
-          >
-            Save as Template
-          </Button>
+        <div className="flex justify-end pt-6">
           <Button
             type="submit"
             disabled={isLoading}

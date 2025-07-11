@@ -187,6 +187,12 @@ Changelog:
     - Enhanced drag-and-drop functionality with visual feedback overlay
     - Implemented graceful error handling for PDF processing with fallback messages
     - All document upload functionality now working reliably across all supported file types
+  - Updated form validation and user experience improvements
+    - Increased word limits for Examples and Input Data fields from 1,000 to 10,000 words
+    - Made title field optional with auto-generation based on selected role
+    - Fixed Back button navigation to show proper chat home screen instead of redirecting to new chat
+    - Removed "Save Template" button from new chat form for cleaner interface
+    - Created comprehensive chat home screen showing existing chats with timestamps and metadata
 ```
 
 ## User Preferences

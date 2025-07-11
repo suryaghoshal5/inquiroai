@@ -52,7 +52,7 @@ export default function NewChat() {
   };
 
   const handleBack = () => {
-    navigate("/");
+    navigate("/chat");
   };
 
   if (isLoading) {
