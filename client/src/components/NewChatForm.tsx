@@ -36,9 +36,9 @@ const chatConfigSchema = z.object({
   customRole: z.string().optional(),
   context: z.string().refine(val => countWords(val) <= 1000, "Context must be 1000 words or less"),
   task: z.string().refine(val => countWords(val) <= 200, "Task must be 200 words or less"),
-  inputData: z.string().refine(val => countWords(val) <= 1000, "Input data must be 1000 words or less"),
+  inputData: z.string().refine(val => countWords(val) <= 10000, "Input data must be 10000 words or less"),
   constraints: z.string().refine(val => countWords(val) <= 200, "Constraints must be 200 words or less"),
-  examples: z.string().refine(val => countWords(val) <= 1000, "Examples must be 1000 words or less"),
+  examples: z.string().refine(val => countWords(val) <= 10000, "Examples must be 10000 words or less"),
   optional: z.string().refine(val => countWords(val) <= 200, "Optional field must be 200 words or less"),
   audience: z.string().refine(val => countWords(val) <= 200, "Audience must be 200 words or less"),
   aiProvider: z.enum(["openai", "gemini", "claude", "grok"]),
@@ -284,7 +284,7 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                 <FormItem>
                   <FormLabel className="text-sm font-semibold text-gray-900 flex items-center">
                     <Database className="w-4 h-4 mr-2 text-blue-600" />
-                    Input Data <span className="text-gray-500 font-normal ml-1">(1000 words max)</span>
+                    Input Data <span className="text-gray-500 font-normal ml-1">(10000 words max)</span>
                   </FormLabel>
                   <FormControl>
                     <Textarea
@@ -299,8 +299,8 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                       onUpload={(content) => handleFileUpload(content, 'inputData')}
                       acceptedTypes={['.pdf', '.xlsx', '.xls', '.docx', '.doc', '.md', '.txt']}
                     />
-                    <span className={`text-sm ${getWordCount("inputData") > 900 ? "text-red-500" : "text-gray-400"}`}>
-                      {getWordCount("inputData")} / 1000 words
+                    <span className={`text-sm ${getWordCount("inputData") > 9000 ? "text-red-500" : "text-gray-400"}`}>
+                      {getWordCount("inputData")} / 10000 words
                     </span>
                   </div>
                   <FormMessage />
@@ -351,7 +351,7 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                 <FormItem>
                   <FormLabel className="text-sm font-semibold text-gray-900 flex items-center">
                     <Lightbulb className="w-4 h-4 mr-2 text-blue-600" />
-                    Examples <span className="text-gray-500 font-normal ml-1">(1000 words max)</span>
+                    Examples <span className="text-gray-500 font-normal ml-1">(10000 words max)</span>
                   </FormLabel>
                   <FormControl>
                     <Textarea
@@ -366,8 +366,8 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                       onUpload={(content) => handleFileUpload(content, 'examples')}
                       acceptedTypes={['.pdf', '.xlsx', '.xls', '.docx', '.doc', '.md', '.txt']}
                     />
-                    <span className={`text-sm ${getWordCount("examples") > 900 ? "text-red-500" : "text-gray-400"}`}>
-                      {getWordCount("examples")} / 1000 words
+                    <span className={`text-sm ${getWordCount("examples") > 9000 ? "text-red-500" : "text-gray-400"}`}>
+                      {getWordCount("examples")} / 10000 words
                     </span>
                   </div>
                   <FormMessage />
