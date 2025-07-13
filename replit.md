@@ -198,6 +198,11 @@ Changelog:
     - Updated researcher role to automatically recommend deep research models
     - Configured researcher mode to prioritize: GPT-4o, Gemini-1.5-Pro, Claude-3-Opus, and Grok-4
     - Enhanced model recommendation logic to consider user role in addition to task content
+  - Fixed DOMException WebSocket error
+    - Removed unused WebSocket server from backend that was causing browser connection errors
+    - System now uses only HTTP POST requests for chat messaging
+    - Eliminated WebSocket connection attempts that were failing in browser
+    - Simplified server architecture by removing unnecessary real-time features
 ```
 
 ## User Preferences
