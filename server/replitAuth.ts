@@ -113,7 +113,7 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/login", (req, res, next) => {
     passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "login",
+      prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
@@ -137,7 +137,7 @@ export async function setupAuth(app: Express) {
           console.error("Session destroy error:", sessionErr);
         }
         
-        // Clear all possible session cookies
+        // Clear all possible session cookies with comprehensive options
         res.clearCookie('connect.sid', {
           path: '/',
           httpOnly: true,
@@ -146,14 +146,18 @@ export async function setupAuth(app: Express) {
         });
         
         // Clear any additional authentication cookies
-        res.clearCookie('session');
-        res.clearCookie('auth');
+        res.clearCookie('session', { path: '/' });
+        res.clearCookie('auth', { path: '/' });
         
-        // Build proper OpenID Connect logout URL that returns to app
+        // Build logout URL that forces complete OAuth provider logout
         const logoutUrl = client.buildEndSessionUrl(config, {
           client_id: process.env.REPL_ID!,
           post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
         });
+        
+        // Add additional parameters to force complete logout
+        logoutUrl.searchParams.set('logout_hint', 'force');
+        logoutUrl.searchParams.set('prompt', 'login');
         
         res.redirect(logoutUrl.href);
       });

@@ -210,10 +210,11 @@ Changelog:
     - Added AuthenticatedHome component to handle redirect logic based on API key status
   - Fixed logout functionality to ensure complete session termination
     - Updated logout endpoint to properly destroy session data and clear cookies
-    - Changed login prompt from "login consent" to "login" to force fresh authentication
+    - Restored login prompt to "login consent" to force fresh authentication and consent
     - Added comprehensive cookie clearing including connect.sid, session, and auth cookies
     - Implemented proper OpenID Connect logout URL that redirects users back to app landing page
-    - Enhanced logout process to clear all authentication state and prevent auto-login
+    - Enhanced logout process with logout_hint=force and prompt=login parameters
+    - Added comprehensive session destruction and cookie clearing to prevent auto-login
     - Fixed logout redirect to return users to app instead of staying on Replit logout page
 ```
 
