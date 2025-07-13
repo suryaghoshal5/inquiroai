@@ -208,6 +208,11 @@ Changelog:
     - Users with existing API keys are automatically redirected to new chat page after login
     - Enhanced user experience by removing need for manual navigation after authentication
     - Added AuthenticatedHome component to handle redirect logic based on API key status
+  - Fixed logout functionality to ensure complete session termination
+    - Updated logout endpoint to properly destroy session data and clear cookies
+    - Changed login prompt from "login consent" to "login" to force fresh authentication
+    - Added session destruction and cookie clearing to prevent automatic re-login
+    - Ensures users must enter credentials again after logout instead of auto-login
 ```
 
 ## User Preferences
