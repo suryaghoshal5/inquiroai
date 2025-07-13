@@ -138,25 +138,30 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  // Temporarily disable authentication for development
-  const mockUser = {
-    id: "dev-user",
-    email: "dev@example.com",
-    firstName: "Dev",
-    lastName: "User",
-    profileImageUrl: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
+  const user = req.user as any;
 
-  // Ensure mock user exists in database
-  try {
-    const { storage } = await import("./storage");
-    await storage.upsertUser(mockUser);
-  } catch (error) {
-    console.error("Error creating mock user:", error);
+  if (!req.isAuthenticated() || !user.expires_at) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
 
-  req.user = mockUser;
-  next();
+  const now = Math.floor(Date.now() / 1000);
+  if (now <= user.expires_at) {
+    return next();
+  }
+
+  const refreshToken = user.refresh_token;
+  if (!refreshToken) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const config = await getOidcConfig();
+    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
+    updateUserSession(user, tokenResponse);
+    return next();
+  } catch (error) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
 };
