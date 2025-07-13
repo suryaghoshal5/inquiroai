@@ -22,6 +22,11 @@ export class CryptoService {
     const iv = Buffer.from(ivHex, 'hex');
     const authTag = Buffer.from(authTagHex, 'hex');
     
+    // Validate authentication tag length for GCM mode (must be 16 bytes)
+    if (authTag.length !== 16) {
+      throw new Error('Invalid authentication tag length');
+    }
+    
     const decipher = crypto.createDecipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
     decipher.setAuthTag(authTag);
     
