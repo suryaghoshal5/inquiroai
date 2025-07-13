@@ -7,6 +7,7 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
+import MemoryStore from "memorystore";
 
 if (!process.env.REPLIT_DOMAINS) {
   throw new Error("Environment variable REPLIT_DOMAINS not provided");
@@ -25,9 +26,9 @@ const getOidcConfig = memoize(
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   
-  // Use in-memory store for development, PostgreSQL for production
+  // Use memory store for development, PostgreSQL for production
   let store = undefined;
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === "production" && process.env.DATABASE_URL) {
     const pgStore = connectPg(session);
     store = new pgStore({
       conString: process.env.DATABASE_URL,
@@ -36,17 +37,25 @@ export function getSession() {
       tableName: "sessions",
       schemaName: "public"
     });
+  } else {
+    // Use memory store for development to avoid session regeneration issues
+    const memoryStore = MemoryStore(session);
+    store = new memoryStore({
+      checkPeriod: sessionTtl
+    });
   }
   
   return session({
     secret: process.env.SESSION_SECRET!,
     store: store,
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true,
+    rolling: true,
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       maxAge: sessionTtl,
+      sameSite: 'lax'
     },
   });
 }
@@ -75,7 +84,12 @@ async function upsertUser(
 
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
-  app.use(getSession());
+  
+  // Setup session middleware
+  const sessionMiddleware = getSession();
+  app.use(sessionMiddleware);
+  
+  // Initialize passport
   app.use(passport.initialize());
   app.use(passport.session());
 
@@ -127,25 +141,42 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/logout", async (req, res) => {
     try {
-      // Perform logout and clear session
-      req.logout((err) => {
-        if (err) {
-          console.error("Logout error:", err);
-        }
+      // Use a Promise-based approach to handle logout
+      const logoutPromise = new Promise<void>((resolve, reject) => {
+        req.logout((err) => {
+          if (err) {
+            console.error("Logout error:", err);
+            reject(err);
+          } else {
+            resolve();
+          }
+        });
       });
+
+      // Wait for logout to complete
+      await logoutPromise;
       
-      // Clear session data
-      req.session.destroy((sessionErr) => {
-        if (sessionErr) {
-          console.error("Session destroy error:", sessionErr);
-        }
-      });
+      // Clear session data only if session exists
+      if (req.session) {
+        const sessionDestroyPromise = new Promise<void>((resolve, reject) => {
+          req.session.destroy((sessionErr) => {
+            if (sessionErr) {
+              console.error("Session destroy error:", sessionErr);
+              reject(sessionErr);
+            } else {
+              resolve();
+            }
+          });
+        });
+        
+        await sessionDestroyPromise;
+      }
       
       // Clear all possible session cookies with comprehensive options
       res.clearCookie('connect.sid', {
         path: '/',
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === "production",
         sameSite: 'lax'
       });
       
@@ -167,6 +198,10 @@ export async function setupAuth(app: Express) {
       res.redirect(logoutUrl.href);
     } catch (error) {
       console.error("Complete logout error:", error);
+      // Clear cookies even if session handling fails
+      res.clearCookie('connect.sid', { path: '/' });
+      res.clearCookie('session', { path: '/' });
+      res.clearCookie('auth', { path: '/' });
       // Fallback: redirect to home page
       res.redirect('/');
     }
