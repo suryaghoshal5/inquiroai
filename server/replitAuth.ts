@@ -125,43 +125,51 @@ export async function setupAuth(app: Express) {
     })(req, res, next);
   });
 
-  app.get("/api/logout", (req, res) => {
-    req.logout((err) => {
-      if (err) {
-        console.error("Logout error:", err);
-      }
+  app.get("/api/logout", async (req, res) => {
+    try {
+      // Perform logout and clear session
+      req.logout((err) => {
+        if (err) {
+          console.error("Logout error:", err);
+        }
+      });
       
       // Clear session data
       req.session.destroy((sessionErr) => {
         if (sessionErr) {
           console.error("Session destroy error:", sessionErr);
         }
-        
-        // Clear all possible session cookies with comprehensive options
-        res.clearCookie('connect.sid', {
-          path: '/',
-          httpOnly: true,
-          secure: true,
-          sameSite: 'lax'
-        });
-        
-        // Clear any additional authentication cookies
-        res.clearCookie('session', { path: '/' });
-        res.clearCookie('auth', { path: '/' });
-        
-        // Build logout URL that forces complete OAuth provider logout
-        const logoutUrl = client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        });
-        
-        // Add additional parameters to force complete logout
-        logoutUrl.searchParams.set('logout_hint', 'force');
-        logoutUrl.searchParams.set('prompt', 'login');
-        
-        res.redirect(logoutUrl.href);
       });
-    });
+      
+      // Clear all possible session cookies with comprehensive options
+      res.clearCookie('connect.sid', {
+        path: '/',
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax'
+      });
+      
+      // Clear any additional authentication cookies
+      res.clearCookie('session', { path: '/' });
+      res.clearCookie('auth', { path: '/' });
+      
+      // Build logout URL that forces complete OAuth provider logout
+      const config = await getOidcConfig();
+      const logoutUrl = client.buildEndSessionUrl(config, {
+        client_id: process.env.REPL_ID!,
+        post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
+      });
+      
+      // Add additional parameters to force complete logout
+      logoutUrl.searchParams.set('logout_hint', 'force');
+      logoutUrl.searchParams.set('prompt', 'login');
+      
+      res.redirect(logoutUrl.href);
+    } catch (error) {
+      console.error("Complete logout error:", error);
+      // Fallback: redirect to home page
+      res.redirect('/');
+    }
   });
 }
 

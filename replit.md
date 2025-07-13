@@ -216,6 +216,8 @@ Changelog:
     - Enhanced logout process with logout_hint=force and prompt=login parameters
     - Added comprehensive session destruction and cookie clearing to prevent auto-login
     - Fixed logout redirect to return users to app instead of staying on Replit logout page
+    - Added error handling and fallback for logout process to prevent failures
+  - Fixed back button navigation in Settings page to properly navigate to new chat page instead of home
 ```
 
 ## User Preferences
