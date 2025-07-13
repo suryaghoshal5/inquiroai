@@ -28,7 +28,7 @@ export const AI_PROVIDERS: Record<string, AIProvider> = {
   },
   grok: {
     name: "Grok",
-    models: ["grok-beta", "grok-vision-beta"],
+    models: ["grok-beta", "grok-vision-beta", "grok-3", "grok-4"],
     defaultModel: "grok-beta"
   }
 };
@@ -201,9 +201,26 @@ export class AIOrchestrator {
     return response.choices[0]?.message?.content || "No response generated";
   }
 
-  static getRecommendedModel(provider: string, task: string): string {
+  static getRecommendedModel(provider: string, task: string, role?: string): string {
     const taskKeywords = task.toLowerCase();
     
+    // For researcher role, prioritize deep research models
+    if (role === "researcher") {
+      switch (provider) {
+        case "openai":
+          return "gpt-4o"; // Most capable OpenAI model for research
+        case "gemini":
+          return "gemini-1.5-pro"; // Best for analysis and research
+        case "claude":
+          return "claude-3-opus-20240229"; // Most capable Claude model for deep research
+        case "grok":
+          return "grok-4"; // Latest Grok model for research
+        default:
+          return AI_PROVIDERS[provider]?.defaultModel || "";
+      }
+    }
+    
+    // Original logic for other roles
     switch (provider) {
       case "openai":
         if (taskKeywords.includes("code") || taskKeywords.includes("programming")) {

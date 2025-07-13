@@ -114,6 +114,7 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
   const getRecommendedModel = () => {
     const task = form.watch("task");
     const provider = form.watch("aiProvider");
+    const role = form.watch("role");
     
     if (!aiProviders || !task || !provider) return null;
 
@@ -122,7 +123,23 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
     
     if (!providerData) return null;
 
-    // Simple recommendation logic
+    // For researcher role, prioritize deep research models
+    if (role === "researcher") {
+      switch (provider) {
+        case "openai":
+          return "gpt-4o"; // Most capable OpenAI model for research
+        case "gemini":
+          return "gemini-1.5-pro"; // Best for analysis and research
+        case "claude":
+          return "claude-3-opus-20240229"; // Most capable Claude model for deep research
+        case "grok":
+          return "grok-4"; // Latest Grok model for research
+        default:
+          return providerData.defaultModel;
+      }
+    }
+
+    // Original logic for other roles
     if (taskLower.includes("code") || taskLower.includes("programming")) {
       return provider === "openai" ? "gpt-4o" : providerData.defaultModel;
     }

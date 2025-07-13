@@ -193,6 +193,11 @@ Changelog:
     - Fixed Back button navigation to show proper chat home screen instead of redirecting to new chat
     - Removed "Save Template" button from new chat form for cleaner interface
     - Created comprehensive chat home screen showing existing chats with timestamps and metadata
+  - Enhanced AI model selection and researcher mode optimization
+    - Added Grok3 and Grok4 models to available model list
+    - Updated researcher role to automatically recommend deep research models
+    - Configured researcher mode to prioritize: GPT-4o, Gemini-1.5-Pro, Claude-3-Opus, and Grok-4
+    - Enhanced model recommendation logic to consider user role in addition to task content
 ```
 
 ## User Preferences
