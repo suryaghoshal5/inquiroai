@@ -30,7 +30,7 @@ export default function Settings() {
   }, [isAuthenticated, isLoading, toast]);
 
   const handleBack = () => {
-    navigate("/new-chat");
+    navigate("/chat/new");
   };
 
   const handleLogout = () => {
