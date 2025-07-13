@@ -149,11 +149,13 @@ export async function setupAuth(app: Express) {
         res.clearCookie('session');
         res.clearCookie('auth');
         
-        // For development/testing, try redirecting to a logout URL that clears Replit session
-        // This forces a complete logout from Replit's OAuth provider
-        const logoutUrl = `https://replit.com/logout?post_logout_redirect_uri=${encodeURIComponent(`${req.protocol}://${req.hostname}`)}`;
+        // Build proper OpenID Connect logout URL that returns to app
+        const logoutUrl = client.buildEndSessionUrl(config, {
+          client_id: process.env.REPL_ID!,
+          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
+        });
         
-        res.redirect(logoutUrl);
+        res.redirect(logoutUrl.href);
       });
     });
   });

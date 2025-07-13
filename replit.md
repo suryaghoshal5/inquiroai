@@ -212,8 +212,9 @@ Changelog:
     - Updated logout endpoint to properly destroy session data and clear cookies
     - Changed login prompt from "login consent" to "login" to force fresh authentication
     - Added comprehensive cookie clearing including connect.sid, session, and auth cookies
-    - Implemented direct Replit logout URL to force complete OAuth provider logout
+    - Implemented proper OpenID Connect logout URL that redirects users back to app landing page
     - Enhanced logout process to clear all authentication state and prevent auto-login
+    - Fixed logout redirect to return users to app instead of staying on Replit logout page
 ```
 
 ## User Preferences
