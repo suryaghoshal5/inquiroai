@@ -203,6 +203,11 @@ Changelog:
     - System now uses only HTTP POST requests for chat messaging
     - Eliminated WebSocket connection attempts that were failing in browser
     - Simplified server architecture by removing unnecessary real-time features
+  - Implemented smart post-login redirect system
+    - Users without API keys are automatically redirected to settings page after login
+    - Users with existing API keys are automatically redirected to new chat page after login
+    - Enhanced user experience by removing need for manual navigation after authentication
+    - Added AuthenticatedHome component to handle redirect logic based on API key status
 ```
 
 ## User Preferences

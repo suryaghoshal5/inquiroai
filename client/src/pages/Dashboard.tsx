@@ -17,6 +17,8 @@ export default function Dashboard() {
     enabled: isAuthenticated,
   });
 
+
+
   const handleNewChat = () => {
     navigate("/chat/new");
   };
