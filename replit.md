@@ -211,8 +211,9 @@ Changelog:
   - Fixed logout functionality to ensure complete session termination
     - Updated logout endpoint to properly destroy session data and clear cookies
     - Changed login prompt from "login consent" to "login" to force fresh authentication
-    - Added session destruction and cookie clearing to prevent automatic re-login
-    - Ensures users must enter credentials again after logout instead of auto-login
+    - Added comprehensive cookie clearing including connect.sid, session, and auth cookies
+    - Implemented direct Replit logout URL to force complete OAuth provider logout
+    - Enhanced logout process to clear all authentication state and prevent auto-login
 ```
 
 ## User Preferences

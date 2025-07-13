@@ -137,16 +137,23 @@ export async function setupAuth(app: Express) {
           console.error("Session destroy error:", sessionErr);
         }
         
-        // Clear session cookie
-        res.clearCookie('connect.sid');
-        
-        // Build logout URL with prompt parameter to force new login
-        const logoutUrl = client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
+        // Clear all possible session cookies
+        res.clearCookie('connect.sid', {
+          path: '/',
+          httpOnly: true,
+          secure: true,
+          sameSite: 'lax'
         });
         
-        res.redirect(logoutUrl.href);
+        // Clear any additional authentication cookies
+        res.clearCookie('session');
+        res.clearCookie('auth');
+        
+        // For development/testing, try redirecting to a logout URL that clears Replit session
+        // This forces a complete logout from Replit's OAuth provider
+        const logoutUrl = `https://replit.com/logout?post_logout_redirect_uri=${encodeURIComponent(`${req.protocol}://${req.hostname}`)}`;
+        
+        res.redirect(logoutUrl);
       });
     });
   });

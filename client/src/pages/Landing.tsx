@@ -157,7 +157,7 @@ export default function Landing() {
               onClick={handleLogin}
               variant="outline"
               size="lg"
-              className="border-white text-white hover:bg-white hover:text-blue-600 px-8 py-4 text-lg font-semibold"
+              className="border-2 border-white text-white bg-transparent hover:bg-white hover:text-blue-600 px-8 py-4 text-lg font-semibold"
             >
               Login
             </Button>
