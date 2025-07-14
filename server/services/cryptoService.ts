@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || "dev-encryption-key-32-chars-long!!";
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || "dev-encryption-key-32-chars-long";
 const ALGORITHM = 'aes-256-gcm';
 
 export class CryptoService {

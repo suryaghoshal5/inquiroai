@@ -231,6 +231,9 @@ Changelog:
   - Fixed authentication flow causing 500 errors when users attempted to add API keys
   - Mock user setup automatically creates "dev-user" for all authenticated requests in development
   - All API key functionality now working correctly with proper validation and error handling
+  - Fixed critical encryption key length issue in CryptoService causing "Invalid key length" errors
+  - Updated development encryption key to exactly 32 bytes as required by AES-256-GCM algorithm
+  - API key encryption and decryption now working properly for secure key storage
 ```
 
 ## User Preferences
