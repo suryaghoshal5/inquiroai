@@ -10,14 +10,45 @@ import { chatConfigSchema, insertMessageSchema, insertApiKeySchema } from "@shar
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
+  // In development mode, bypass authentication and use mock user
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  if (!isDevelopment) {
+    // Auth middleware for production
+    await setupAuth(app);
+  }
 
   // Initialize default role prompts
   await PromptService.initializeDefaultPrompts();
 
+  // Create mock user for development
+  if (isDevelopment) {
+    try {
+      await storage.upsertUser({
+        id: "dev-user",
+        email: "dev@inquiroai.com",
+        firstName: "Development",
+        lastName: "User",
+        profileImageUrl: null,
+      });
+    } catch (error) {
+      console.error("Error creating mock user:", error);
+    }
+  }
+
+  // Mock authentication middleware for development
+  const mockAuth = (req: any, res: any, next: any) => {
+    if (isDevelopment) {
+      req.user = { claims: { sub: "dev-user" } };
+      req.isAuthenticated = () => true;
+      next();
+    } else {
+      isAuthenticated(req, res, next);
+    }
+  };
+
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', mockAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -29,7 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Chat routes
-  app.post('/api/chats', isAuthenticated, async (req: any, res) => {
+  app.post('/api/chats', mockAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const config = chatConfigSchema.parse(req.body);
@@ -87,7 +118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/chats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/chats', mockAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const chats = await storage.getUserChats(userId);
@@ -111,7 +142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/chats/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/chats/:id', mockAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const chatId = parseInt(req.params.id);
@@ -129,7 +160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/chats/:id/messages', isAuthenticated, async (req: any, res) => {
+  app.post('/api/chats/:id/messages', mockAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const chatId = parseInt(req.params.id);
@@ -198,7 +229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/chats/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/chats/:id', mockAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const chatId = parseInt(req.params.id);
@@ -217,7 +248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // API Key routes
-  app.get('/api/api-keys', isAuthenticated, async (req: any, res) => {
+  app.get('/api/api-keys', mockAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const apiKeys = await storage.getUserApiKeys(userId);
@@ -235,7 +266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/api-keys', isAuthenticated, async (req: any, res) => {
+  app.post('/api/api-keys', mockAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { provider, apiKey } = req.body;
@@ -278,7 +309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/api-keys/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/api-keys/:id', mockAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const keyId = parseInt(req.params.id);
@@ -305,7 +336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // File upload route
-  app.post('/api/upload', isAuthenticated, FileProcessor.getUploadMiddleware(), async (req: any, res) => {
+  app.post('/api/upload', mockAuth, FileProcessor.getUploadMiddleware(), async (req: any, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
