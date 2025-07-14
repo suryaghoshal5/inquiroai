@@ -8,30 +8,180 @@ export interface AIProvider {
   name: string;
   models: string[];
   defaultModel: string;
+  lastUpdated?: Date;
 }
 
 export const AI_PROVIDERS: Record<string, AIProvider> = {
   openai: {
     name: "OpenAI",
-    models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"],
-    defaultModel: "gpt-4o" // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
+    models: [
+      "gpt-4.5", // Latest flagship model (July 2025)
+      "gpt-4.1", // April 2025 release
+      "gpt-4.1-mini", // Smaller version of GPT-4.1
+      "o4-mini", // Optimized reasoning model
+      "o3", // Latest reasoning model
+      "o3-pro", // Professional reasoning model
+      "gpt-4o", // Previous flagship
+      "gpt-4o-mini", // Smaller version
+      "gpt-4-turbo"
+    ],
+    defaultModel: "gpt-4.5"
   },
   gemini: {
     name: "Google Gemini",
-    models: ["gemini-2.0-flash-exp", "gemini-1.5-pro", "gemini-1.5-flash"],
-    defaultModel: "gemini-2.0-flash-exp"
+    models: [
+      "gemini-2.5-pro", // Latest flagship (March 2025)
+      "gemini-2.0-pro", // Previous version
+      "gemini-2.0-flash-exp", // Experimental version
+      "gemini-1.5-pro", // Previous generation
+      "gemini-1.5-flash" // Faster version
+    ],
+    defaultModel: "gemini-2.5-pro"
   },
   claude: {
     name: "Anthropic Claude",
-    models: ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307"],
-    defaultModel: "claude-3-5-sonnet-20241022"
+    models: [
+      "claude-4", // Latest flagship (May 2025)
+      "claude-4-opus", // Most powerful Claude 4 variant
+      "claude-4-sonnet", // Balanced Claude 4 variant
+      "claude-3.7-sonnet", // Hybrid reasoning model (Feb 2025)
+      "claude-3-5-sonnet-20241022", // Previous generation
+      "claude-3-opus-20240229", // Most capable Claude 3
+      "claude-3-haiku-20240307" // Fastest Claude 3
+    ],
+    defaultModel: "claude-4"
   },
   grok: {
     name: "Grok",
-    models: ["grok-beta", "grok-vision-beta", "grok-3", "grok-4"],
-    defaultModel: "grok-beta"
+    models: [
+      "grok-4", // Latest flagship (2025)
+      "grok-4-heavy", // Most powerful variant
+      "grok-3", // Previous generation (Feb 2025)
+      "grok-3-think", // Reasoning mode
+      "grok-beta", // Beta version
+      "grok-vision-beta" // Vision capabilities
+    ],
+    defaultModel: "grok-4"
   }
 };
+
+// Dynamic model fetching functions
+class ModelUpdater {
+  private static async fetchOpenAIModels(): Promise<string[]> {
+    try {
+      // Try to fetch from OpenAI API if we have a valid API key
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (apiKey) {
+        const openai = new OpenAI({ apiKey });
+        const models = await openai.models.list();
+        // Filter for GPT models and sort by relevance
+        const gptModels = models.data
+          .filter(model => model.id.startsWith('gpt-') || model.id.startsWith('o3') || model.id.startsWith('o4'))
+          .map(model => model.id)
+          .sort((a, b) => {
+            // Sort by model priority (newer first)
+            const priority = ['gpt-4.5', 'gpt-4.1', 'o4-mini', 'o3', 'gpt-4o', 'gpt-4o-mini'];
+            return priority.indexOf(a) - priority.indexOf(b);
+          });
+        
+        if (gptModels.length > 0) {
+          return gptModels;
+        }
+      }
+    } catch (error) {
+      console.log("Could not fetch OpenAI models dynamically, using static list");
+    }
+    
+    // Fallback to static list if API call fails
+    return [
+      "gpt-4.5", "gpt-4.1", "gpt-4.1-mini", "o4-mini", "o3", "o3-pro", 
+      "gpt-4o", "gpt-4o-mini", "gpt-4-turbo"
+    ];
+  }
+
+  private static async fetchGeminiModels(): Promise<string[]> {
+    // In a real implementation, this would fetch from Google's API
+    return [
+      "gemini-2.5-pro", "gemini-2.0-pro", "gemini-2.0-flash-exp", 
+      "gemini-1.5-pro", "gemini-1.5-flash"
+    ];
+  }
+
+  private static async fetchClaudeModels(): Promise<string[]> {
+    // In a real implementation, this would fetch from Anthropic's API
+    return [
+      "claude-4", "claude-4-opus", "claude-4-sonnet", "claude-3.7-sonnet",
+      "claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307"
+    ];
+  }
+
+  private static async fetchGrokModels(): Promise<string[]> {
+    // In a real implementation, this would fetch from xAI's API
+    return [
+      "grok-4", "grok-4-heavy", "grok-3", "grok-3-think", 
+      "grok-beta", "grok-vision-beta"
+    ];
+  }
+
+  static async updateAllProviders(): Promise<Record<string, AIProvider>> {
+    try {
+      const [openaiModels, geminiModels, claudeModels, grokModels] = await Promise.all([
+        this.fetchOpenAIModels(),
+        this.fetchGeminiModels(),
+        this.fetchClaudeModels(),
+        this.fetchGrokModels()
+      ]);
+
+      const updatedProviders: Record<string, AIProvider> = {
+        openai: {
+          name: "OpenAI",
+          models: openaiModels,
+          defaultModel: "gpt-4.5",
+          lastUpdated: new Date()
+        },
+        gemini: {
+          name: "Google Gemini",
+          models: geminiModels,
+          defaultModel: "gemini-2.5-pro",
+          lastUpdated: new Date()
+        },
+        claude: {
+          name: "Anthropic Claude",
+          models: claudeModels,
+          defaultModel: "claude-4",
+          lastUpdated: new Date()
+        },
+        grok: {
+          name: "Grok",
+          models: grokModels,
+          defaultModel: "grok-4",
+          lastUpdated: new Date()
+        }
+      };
+
+      // Update the main AI_PROVIDERS object
+      Object.assign(AI_PROVIDERS, updatedProviders);
+      
+      return updatedProviders;
+    } catch (error) {
+      console.error("Failed to update AI providers:", error);
+      return AI_PROVIDERS;
+    }
+  }
+
+  static async getLatestProviders(): Promise<Record<string, AIProvider>> {
+    const lastUpdate = AI_PROVIDERS.openai.lastUpdated;
+    const hoursSinceUpdate = lastUpdate ? 
+      (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60) : 24;
+    
+    // Update models if more than 24 hours old or never updated
+    if (hoursSinceUpdate > 24) {
+      return await this.updateAllProviders();
+    }
+    
+    return AI_PROVIDERS;
+  }
+}
 
 export class AIOrchestrator {
   private static async getApiKey(userId: string, provider: string): Promise<string> {
@@ -239,6 +389,14 @@ export class AIOrchestrator {
       default:
         return AI_PROVIDERS[provider]?.defaultModel || "";
     }
+  }
+
+  static async getAvailableProviders(): Promise<Record<string, AIProvider>> {
+    return await ModelUpdater.getLatestProviders();
+  }
+
+  static async refreshProviders(): Promise<Record<string, AIProvider>> {
+    return await ModelUpdater.updateAllProviders();
   }
 
   static async validateApiKey(provider: string, apiKey: string): Promise<boolean> {

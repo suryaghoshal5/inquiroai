@@ -332,7 +332,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // AI Providers route
   app.get('/api/ai-providers', async (req, res) => {
-    res.json(AI_PROVIDERS);
+    try {
+      const providers = await AIOrchestrator.getAvailableProviders();
+      res.json(providers);
+    } catch (error) {
+      console.error("Error fetching AI providers:", error);
+      res.status(500).json({ message: "Failed to fetch AI providers" });
+    }
+  });
+
+  // AI Providers refresh route
+  app.post('/api/ai-providers/refresh', async (req, res) => {
+    try {
+      const providers = await AIOrchestrator.refreshProviders();
+      res.json(providers);
+    } catch (error) {
+      console.error("Error refreshing AI providers:", error);
+      res.status(500).json({ message: "Failed to refresh AI providers" });
+    }
   });
 
   // File upload route

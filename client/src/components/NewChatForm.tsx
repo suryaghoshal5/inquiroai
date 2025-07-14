@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -22,9 +22,12 @@ import {
   Users, 
   Bot,
   UserCheck,
-  Rocket
+  Rocket,
+  RefreshCw
 } from "lucide-react";
 import type { ChatConfig, AIProvider } from "@/types";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 // Helper function to count words
 const countWords = (text: string): number => {
@@ -35,12 +38,12 @@ const chatConfigSchema = z.object({
   role: z.enum(["researcher", "product_manager", "developer", "content_writer", "designer", "presales_consultant", "custom"]),
   customRole: z.string().optional(),
   context: z.string().refine(val => countWords(val) <= 1000, "Context must be 1000 words or less"),
-  task: z.string().refine(val => countWords(val) <= 200, "Task must be 200 words or less"),
+  task: z.string().refine(val => countWords(val) <= 10000, "Task must be 10000 words or less"),
   inputData: z.string().refine(val => countWords(val) <= 10000, "Input data must be 10000 words or less"),
-  constraints: z.string().refine(val => countWords(val) <= 200, "Constraints must be 200 words or less"),
+  constraints: z.string().refine(val => countWords(val) <= 10000, "Constraints must be 10000 words or less"),
   examples: z.string().refine(val => countWords(val) <= 10000, "Examples must be 10000 words or less"),
-  optional: z.string().refine(val => countWords(val) <= 200, "Optional field must be 200 words or less"),
-  audience: z.string().refine(val => countWords(val) <= 200, "Audience must be 200 words or less"),
+  optional: z.string().refine(val => countWords(val) <= 10000, "Optional field must be 10000 words or less"),
+  audience: z.string().refine(val => countWords(val) <= 10000, "Audience must be 10000 words or less"),
   aiProvider: z.enum(["openai", "gemini", "claude", "grok"]),
   aiModel: z.string().min(1, "AI model is required"),
   title: z.string().max(100, "Title must be 100 characters or less").optional(),
@@ -53,9 +56,32 @@ interface NewChatFormProps {
 
 export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
   const [selectedProvider, setSelectedProvider] = useState<string>("openai");
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  const { data: aiProviders } = useQuery<Record<string, AIProvider>>({
+  const { data: aiProviders, isLoading: providersLoading } = useQuery<Record<string, AIProvider>>({
     queryKey: ["/api/ai-providers"],
+  });
+
+  const refreshProvidersMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/ai-providers/refresh", {});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-providers"] });
+      toast({
+        title: "Models Updated",
+        description: "AI models have been refreshed with the latest available options.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to refresh AI models. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const form = useForm<ChatConfig>({
@@ -270,7 +296,7 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                 <FormItem>
                   <FormLabel className="text-sm font-semibold text-gray-900 flex items-center">
                     <ListTodo className="w-4 h-4 mr-2 text-blue-600" />
-                    Task <span className="text-gray-500 font-normal ml-1">(200 words max)</span>
+                    Task <span className="text-gray-500 font-normal ml-1">(10,000 words max)</span>
                   </FormLabel>
                   <FormControl>
                     <Input
@@ -281,8 +307,8 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                   </FormControl>
                   <div className="flex justify-between items-center mt-2">
                     <FormMessage />
-                    <span className={`text-sm ${getWordCount("task") > 180 ? "text-red-500" : "text-gray-400"}`}>
-                      {getWordCount("task")} / 200 words
+                    <span className={`text-sm ${getWordCount("task") > 9000 ? "text-red-500" : "text-gray-400"}`}>
+                      {getWordCount("task")} / 10,000 words
                     </span>
                   </div>
                 </FormItem>
@@ -337,7 +363,7 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                 <FormItem>
                   <FormLabel className="text-sm font-semibold text-gray-900 flex items-center">
                     <AlertTriangle className="w-4 h-4 mr-2 text-blue-600" />
-                    Constraints <span className="text-gray-500 font-normal ml-1">(200 words max)</span>
+                    Constraints <span className="text-gray-500 font-normal ml-1">(10,000 words max)</span>
                   </FormLabel>
                   <FormControl>
                     <Input
@@ -348,8 +374,8 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                   </FormControl>
                   <div className="flex justify-between items-center mt-2">
                     <FormMessage />
-                    <span className={`text-sm ${getWordCount("constraints") > 180 ? "text-red-500" : "text-gray-400"}`}>
-                      {getWordCount("constraints")} / 200 words
+                    <span className={`text-sm ${getWordCount("constraints") > 9000 ? "text-red-500" : "text-gray-400"}`}>
+                      {getWordCount("constraints")} / 10,000 words
                     </span>
                   </div>
                 </FormItem>
@@ -405,7 +431,7 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                   <FormItem>
                     <FormLabel className="text-sm font-semibold text-gray-900 flex items-center">
                       <Star className="w-4 h-4 mr-2 text-blue-600" />
-                      Optional <span className="text-gray-500 font-normal ml-1">(200 words max)</span>
+                      Optional <span className="text-gray-500 font-normal ml-1">(10,000 words max)</span>
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -416,8 +442,8 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                     </FormControl>
                     <div className="flex justify-between items-center mt-2">
                       <FormMessage />
-                      <span className={`text-sm ${getWordCount("optional") > 180 ? "text-red-500" : "text-gray-400"}`}>
-                        {getWordCount("optional")} / 200 words
+                      <span className={`text-sm ${getWordCount("optional") > 9000 ? "text-red-500" : "text-gray-400"}`}>
+                        {getWordCount("optional")} / 10,000 words
                       </span>
                     </div>
                   </FormItem>
@@ -435,7 +461,7 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                   <FormItem>
                     <FormLabel className="text-sm font-semibold text-gray-900 flex items-center">
                       <Users className="w-4 h-4 mr-2 text-blue-600" />
-                      Audience <span className="text-gray-500 font-normal ml-1">(200 words max)</span>
+                      Audience <span className="text-gray-500 font-normal ml-1">(10,000 words max)</span>
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -446,8 +472,8 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
                     </FormControl>
                     <div className="flex justify-between items-center mt-2">
                       <FormMessage />
-                      <span className={`text-sm ${getWordCount("audience") > 180 ? "text-red-500" : "text-gray-400"}`}>
-                        {getWordCount("audience")} / 200 words
+                      <span className={`text-sm ${getWordCount("audience") > 9000 ? "text-red-500" : "text-gray-400"}`}>
+                        {getWordCount("audience")} / 10,000 words
                       </span>
                     </div>
                   </FormItem>
@@ -461,9 +487,22 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
         <Card>
           <CardContent className="p-6">
             <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Bot className="w-5 h-5 text-blue-600" />
-                <h3 className="text-sm font-semibold text-gray-900">AI Engine Selection</h3>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Bot className="w-5 h-5 text-blue-600" />
+                  <h3 className="text-sm font-semibold text-gray-900">AI Engine Selection</h3>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refreshProvidersMutation.mutate()}
+                  disabled={refreshProvidersMutation.isPending}
+                  className="flex items-center space-x-2"
+                >
+                  <RefreshCw className={`w-4 h-4 ${refreshProvidersMutation.isPending ? 'animate-spin' : ''}`} />
+                  <span className="text-xs">Refresh Models</span>
+                </Button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

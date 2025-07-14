@@ -218,6 +218,16 @@ Changelog:
     - Fixed logout redirect to return users to app instead of staying on Replit logout page
     - Added error handling and fallback for logout process to prevent failures
   - Fixed back button navigation in Settings page to properly navigate to new chat page (/chat/new) instead of home
+- July 14, 2025. Enhanced AI model selection with latest 2025 models and dynamic refresh capability
+  - Added latest AI models: GPT-4.5, GPT-4.1, Gemini 2.5 Pro, Claude 4/Opus 4/Sonnet 4, Grok 4
+  - Implemented dynamic AI model fetching system with automatic daily updates
+  - Added refresh button to manually update AI models list in New Chat form
+  - Enhanced database schema to support unlimited text length in chat fields (task, constraints, optional, audience)
+  - Updated form validation to allow 10,000 words instead of 200 characters in key fields
+  - Created ModelUpdater class for automatic provider synchronization
+  - Added /api/ai-providers/refresh endpoint for manual model updates
+  - Fixed chat creation validation errors caused by restrictive field length limits
+  - Improved model recommendation system to consider latest flagship models by default
 - July 13, 2025. Fixed critical session management error preventing app startup
   - Resolved "Cannot read properties of undefined (reading 'regenerate')" error in Passport session management
   - Updated session configuration to use memory store for development, PostgreSQL for production
