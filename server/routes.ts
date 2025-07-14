@@ -166,14 +166,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const chatId = parseInt(req.params.id);
       const { content } = req.body;
       
+      console.log(`Message request - User: ${userId}, Chat: ${chatId}, Content: ${content?.substring(0, 100)}...`);
+      
       if (!content || typeof content !== 'string') {
         return res.status(400).json({ message: "Message content is required" });
       }
       
       const chat = await storage.getChat(chatId);
       if (!chat || chat.userId !== userId) {
+        console.log(`Chat not found or unauthorized - Chat: ${chat ? 'exists' : 'not found'}, User match: ${chat?.userId === userId}`);
         return res.status(404).json({ message: "Chat not found" });
       }
+      
+      console.log(`Chat found - Provider: ${chat.aiProvider}, Model: ${chat.aiModel}`);
       
       // Save user message
       await storage.createMessage({
@@ -181,6 +186,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: "user",
         content
       });
+      
+      // Check if user has API key for this provider
+      const apiKey = await storage.getApiKey(userId, chat.aiProvider);
+      if (!apiKey) {
+        console.log(`No API key found for user ${userId} and provider ${chat.aiProvider}`);
+        return res.status(400).json({ 
+          message: `No API key found for ${chat.aiProvider}. Please add your API key in settings.`,
+          requiresApiKey: true,
+          provider: chat.aiProvider
+        });
+      }
+      
+      if (!apiKey.isValid) {
+        console.log(`Invalid API key for user ${userId} and provider ${chat.aiProvider}`);
+        return res.status(400).json({ 
+          message: `API key for ${chat.aiProvider} is invalid. Please update your API key in settings.`,
+          requiresApiKey: true,
+          provider: chat.aiProvider
+        });
+      }
+      
+      console.log(`API key found and valid for provider ${chat.aiProvider}`);
       
       // Get chat history for context
       const messages = await storage.getChatMessages(chatId);
@@ -202,6 +229,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title: chat.title
       };
       
+      console.log(`Generating system prompt and AI response...`);
+      
       const systemPrompt = await PromptService.generatePrompt(chatConfig);
       const aiResponse = await AIOrchestrator.generateResponse(
         userId,
@@ -210,6 +239,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         systemPrompt,
         context
       );
+      
+      console.log(`AI response generated successfully, length: ${aiResponse.length}`);
       
       // Save AI response
       const aiMessage = await storage.createMessage({
@@ -225,7 +256,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(aiMessage);
     } catch (error) {
       console.error("Error sending message:", error);
-      res.status(500).json({ message: "Failed to send message" });
+      console.error("Error details:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      res.status(500).json({ 
+        message: "Failed to send message",
+        error: error.message
+      });
     }
   });
 

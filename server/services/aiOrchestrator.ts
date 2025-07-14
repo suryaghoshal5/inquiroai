@@ -194,7 +194,12 @@ export class AIOrchestrator {
       throw new Error(`API key for ${provider} is invalid`);
     }
     
-    return CryptoService.decrypt(apiKey.encryptedKey);
+    try {
+      return CryptoService.decrypt(apiKey.encryptedKey);
+    } catch (error) {
+      console.error(`Error decrypting API key for ${provider}:`, error);
+      throw new Error(`Failed to decrypt API key for ${provider}`);
+    }
   }
 
   private static async createOpenAIClient(userId: string): Promise<OpenAI> {
@@ -228,6 +233,7 @@ export class AIOrchestrator {
     context: string[] = []
   ): Promise<string> {
     try {
+      console.log(`Generating response for ${provider} with model ${model}`);
       switch (provider) {
         case "openai":
           return await this.generateOpenAIResponse(userId, model, prompt, context);
@@ -242,6 +248,11 @@ export class AIOrchestrator {
       }
     } catch (error) {
       console.error(`AI generation error for ${provider}:`, error);
+      console.error(`Error details:`, {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
       throw error;
     }
   }

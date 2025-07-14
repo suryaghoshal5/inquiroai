@@ -60,7 +60,8 @@ export default function ChatPage() {
       queryClient.invalidateQueries({ queryKey: [`/api/chats/${chatId}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/chats"] });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.log("Chat error:", error);
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -72,6 +73,22 @@ export default function ChatPage() {
         }, 500);
         return;
       }
+      
+      // Handle API key errors specifically
+      if (error.message && error.message.includes("API key")) {
+        toast({
+          title: "API Key Required",
+          description: "Please add your API key in settings to continue chatting.",
+          variant: "destructive",
+          action: (
+            <Button onClick={() => navigate("/settings")} size="sm">
+              Go to Settings
+            </Button>
+          ),
+        });
+        return;
+      }
+      
       toast({
         title: "Error",
         description: "Failed to send message. Please try again.",
