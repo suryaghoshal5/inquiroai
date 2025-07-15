@@ -30,13 +30,13 @@ export const AI_PROVIDERS: Record<string, AIProvider> = {
   gemini: {
     name: "Google Gemini",
     models: [
-      "gemini-2.5-pro", // Latest flagship (March 2025)
-      "gemini-2.0-pro", // Previous version
-      "gemini-2.0-flash-exp", // Experimental version
-      "gemini-1.5-pro", // Previous generation
-      "gemini-1.5-flash" // Faster version
+      "gemini-2.0-flash-exp", // Latest experimental version
+      "gemini-1.5-pro", // Most capable production model
+      "gemini-1.5-flash", // Faster version
+      "gemini-1.5-flash-8b", // Lightweight version
+      "gemini-1.0-pro" // Previous generation
     ],
-    defaultModel: "gemini-2.5-pro"
+    defaultModel: "gemini-2.0-flash-exp"
   },
   claude: {
     name: "Anthropic Claude",
@@ -100,10 +100,10 @@ class ModelUpdater {
   }
 
   private static async fetchGeminiModels(): Promise<string[]> {
-    // In a real implementation, this would fetch from Google's API
+    // Return actual Gemini model names that exist in the API
     return [
-      "gemini-2.5-pro", "gemini-2.0-pro", "gemini-2.0-flash-exp", 
-      "gemini-1.5-pro", "gemini-1.5-flash"
+      "gemini-2.0-flash-exp", "gemini-1.5-pro", "gemini-1.5-flash", 
+      "gemini-1.5-flash-8b", "gemini-1.0-pro"
     ];
   }
 
@@ -142,7 +142,7 @@ class ModelUpdater {
         gemini: {
           name: "Google Gemini",
           models: geminiModels,
-          defaultModel: "gemini-2.5-pro",
+          defaultModel: "gemini-2.0-flash-exp",
           lastUpdated: new Date()
         },
         claude: {
@@ -289,26 +289,46 @@ export class AIOrchestrator {
     prompt: string,
     context: string[]
   ): Promise<string> {
-    const client = await this.createGeminiClient(userId);
-    
-    // Prepare the conversation history
-    const contents = context.map((msg, idx) => ({
-      role: idx % 2 === 0 ? "user" : "model",
-      parts: [{ text: msg }]
-    }));
+    try {
+      console.log(`Creating Gemini client for user ${userId}`);
+      const client = await this.createGeminiClient(userId);
+      
+      console.log(`Getting generative model: ${model}`);
+      // Get the generative model
+      const generativeModel = client.getGenerativeModel({ model });
+      
+      console.log(`Preparing conversation history, context length: ${context.length}`);
+      // Prepare the conversation history
+      const history = context.map((msg, idx) => ({
+        role: idx % 2 === 0 ? "user" : "model",
+        parts: [{ text: msg }]
+      }));
 
-    // Add the current prompt
-    contents.push({
-      role: "user",
-      parts: [{ text: prompt }]
-    });
-
-    const result = await client.models.generateContent({
-      model,
-      contents
-    });
-
-    return result.text || "No response generated";
+      console.log(`Sending request to Gemini API...`);
+      
+      // If we have history, start a chat session
+      if (history.length > 0) {
+        console.log(`Starting chat with history`);
+        const chat = generativeModel.startChat({ history });
+        const result = await chat.sendMessage(prompt);
+        console.log(`Gemini chat response received`);
+        return result.response.text() || "No response generated";
+      } else {
+        console.log(`Generating content directly (no history)`);
+        const result = await generativeModel.generateContent(prompt);
+        console.log(`Gemini direct response received`);
+        return result.response.text() || "No response generated";
+      }
+    } catch (error) {
+      console.error(`Gemini API error:`, error);
+      console.error(`Error details:`, {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        code: error.code
+      });
+      throw error;
+    }
   }
 
   private static async generateClaudeResponse(
