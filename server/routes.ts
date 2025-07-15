@@ -97,26 +97,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         configuration: { systemPrompt: fullPrompt }
       });
 
-      // Send the structured prompt to AI and get initial response
+      // Try to generate initial AI response, but don't fail chat creation if it fails
       try {
-        console.log("Generating initial AI response for chat", chat.id);
-        const aiResponse = await AIOrchestrator.generateResponse(
-          userId,
-          config.aiProvider,
-          config.aiModel,
-          fullPrompt,
-          []
-        );
-        
-        console.log("AI response generated successfully, saving to database");
-        // Save the AI's initial response
-        await storage.createMessage({
-          chatId: chat.id,
-          role: "assistant",
-          content: aiResponse,
-          metadata: { provider: config.aiProvider, model: config.aiModel }
-        });
-        console.log("Initial AI response saved successfully");
+        // Check if user has API key for the selected provider
+        const apiKey = await storage.getApiKey(userId, config.aiProvider);
+        if (apiKey) {
+          console.log("Generating initial AI response for chat", chat.id);
+          const aiResponse = await AIOrchestrator.generateResponse(
+            userId,
+            config.aiProvider,
+            config.aiModel,
+            fullPrompt,
+            []
+          );
+          
+          console.log("AI response generated successfully, saving to database");
+          // Save the AI's initial response
+          await storage.createMessage({
+            chatId: chat.id,
+            role: "assistant",
+            content: aiResponse,
+            metadata: { provider: config.aiProvider, model: config.aiModel }
+          });
+          console.log("Initial AI response saved successfully");
+        } else {
+          console.log("No API key found for provider", config.aiProvider, "- skipping initial AI response");
+        }
       } catch (error) {
         console.error("Error generating initial AI response:", error);
         // Continue without initial response - user can still chat
@@ -125,7 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(chat);
     } catch (error) {
       console.error("Error creating chat:", error);
-      res.status(400).json({ message: "Failed to create chat" });
+      res.status(500).json({ message: "Failed to create chat. Please try again." });
     }
   });
 
