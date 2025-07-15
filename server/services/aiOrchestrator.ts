@@ -15,17 +15,13 @@ export const AI_PROVIDERS: Record<string, AIProvider> = {
   openai: {
     name: "OpenAI",
     models: [
-      "gpt-4.5", // Latest flagship model (July 2025)
-      "gpt-4.1", // April 2025 release
-      "gpt-4.1-mini", // Smaller version of GPT-4.1
-      "o4-mini", // Optimized reasoning model
-      "o3", // Latest reasoning model
-      "o3-pro", // Professional reasoning model
-      "gpt-4o", // Previous flagship
+      "gpt-4o", // Latest flagship model
       "gpt-4o-mini", // Smaller version
-      "gpt-4-turbo"
+      "gpt-4-turbo", // Previous flagship
+      "gpt-4", // Standard GPT-4
+      "gpt-3.5-turbo" // Lightweight option
     ],
-    defaultModel: "gpt-4.5"
+    defaultModel: "gpt-4o"
   },
   gemini: {
     name: "Google Gemini",
@@ -41,27 +37,20 @@ export const AI_PROVIDERS: Record<string, AIProvider> = {
   claude: {
     name: "Anthropic Claude",
     models: [
-      "claude-4", // Latest flagship (May 2025)
-      "claude-4-opus", // Most powerful Claude 4 variant
-      "claude-4-sonnet", // Balanced Claude 4 variant
-      "claude-3.7-sonnet", // Hybrid reasoning model (Feb 2025)
-      "claude-3-5-sonnet-20241022", // Previous generation
+      "claude-3-5-sonnet-20241022", // Latest Claude 3.5 Sonnet
       "claude-3-opus-20240229", // Most capable Claude 3
-      "claude-3-haiku-20240307" // Fastest Claude 3
+      "claude-3-haiku-20240307", // Fastest Claude 3
+      "claude-3-sonnet-20240229" // Balanced Claude 3
     ],
-    defaultModel: "claude-4"
+    defaultModel: "claude-3-5-sonnet-20241022"
   },
   grok: {
     name: "Grok",
     models: [
-      "grok-4", // Latest flagship (2025)
-      "grok-4-heavy", // Most powerful variant
-      "grok-3", // Previous generation (Feb 2025)
-      "grok-3-think", // Reasoning mode
-      "grok-beta", // Beta version
+      "grok-beta", // Main Grok model
       "grok-vision-beta" // Vision capabilities
     ],
-    defaultModel: "grok-4"
+    defaultModel: "grok-beta"
   }
 };
 
@@ -94,8 +83,7 @@ class ModelUpdater {
     
     // Fallback to static list if API call fails
     return [
-      "gpt-4.5", "gpt-4.1", "gpt-4.1-mini", "o4-mini", "o3", "o3-pro", 
-      "gpt-4o", "gpt-4o-mini", "gpt-4-turbo"
+      "gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"
     ];
   }
 
@@ -108,17 +96,16 @@ class ModelUpdater {
   }
 
   private static async fetchClaudeModels(): Promise<string[]> {
-    // In a real implementation, this would fetch from Anthropic's API
+    // Return actual Claude model names that exist in the API
     return [
-      "claude-4", "claude-4-opus", "claude-4-sonnet", "claude-3.7-sonnet",
-      "claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307"
+      "claude-3-5-sonnet-20241022", "claude-3-opus-20240229", 
+      "claude-3-haiku-20240307", "claude-3-sonnet-20240229"
     ];
   }
 
   private static async fetchGrokModels(): Promise<string[]> {
-    // In a real implementation, this would fetch from xAI's API
+    // Return actual Grok model names that exist in the API
     return [
-      "grok-4", "grok-4-heavy", "grok-3", "grok-3-think", 
       "grok-beta", "grok-vision-beta"
     ];
   }
@@ -136,7 +123,7 @@ class ModelUpdater {
         openai: {
           name: "OpenAI",
           models: openaiModels,
-          defaultModel: "gpt-4.5",
+          defaultModel: "gpt-4o",
           lastUpdated: new Date()
         },
         gemini: {
@@ -148,13 +135,13 @@ class ModelUpdater {
         claude: {
           name: "Anthropic Claude",
           models: claudeModels,
-          defaultModel: "claude-4",
+          defaultModel: "claude-3-5-sonnet-20241022",
           lastUpdated: new Date()
         },
         grok: {
           name: "Grok",
           models: grokModels,
-          defaultModel: "grok-4",
+          defaultModel: "grok-beta",
           lastUpdated: new Date()
         }
       };
@@ -263,24 +250,39 @@ export class AIOrchestrator {
     prompt: string,
     context: string[]
   ): Promise<string> {
-    const client = await this.createOpenAIClient(userId);
-    
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      { role: "system", content: prompt },
-      ...context.map((msg, idx) => ({
-        role: (idx % 2 === 0 ? "user" : "assistant") as "user" | "assistant",
-        content: msg
-      }))
-    ];
+    try {
+      console.log(`Creating OpenAI client for user ${userId}`);
+      const client = await this.createOpenAIClient(userId);
+      
+      console.log(`Preparing OpenAI messages for model: ${model}`);
+      const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+        { role: "system", content: prompt },
+        ...context.map((msg, idx) => ({
+          role: (idx % 2 === 0 ? "user" : "assistant") as "user" | "assistant",
+          content: msg
+        }))
+      ];
 
-    const response = await client.chat.completions.create({
-      model,
-      messages,
-      max_tokens: 2000,
-      temperature: 0.7,
-    });
+      console.log(`Sending request to OpenAI API...`);
+      const response = await client.chat.completions.create({
+        model,
+        messages,
+        max_tokens: 2000,
+        temperature: 0.7,
+      });
 
-    return response.choices[0]?.message?.content || "No response generated";
+      console.log(`OpenAI response received successfully`);
+      return response.choices[0]?.message?.content || "No response generated";
+    } catch (error) {
+      console.error(`OpenAI API error:`, error);
+      console.error(`Error details:`, {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        code: error.code
+      });
+      throw error;
+    }
   }
 
   private static async generateGeminiResponse(
@@ -337,23 +339,38 @@ export class AIOrchestrator {
     prompt: string,
     context: string[]
   ): Promise<string> {
-    const client = await this.createClaudeClient(userId);
-    
-    const messages: Anthropic.MessageParam[] = [
-      ...context.map((msg, idx) => ({
-        role: (idx % 2 === 0 ? "user" : "assistant") as "user" | "assistant",
-        content: msg
-      }))
-    ];
+    try {
+      console.log(`Creating Claude client for user ${userId}`);
+      const client = await this.createClaudeClient(userId);
+      
+      console.log(`Preparing Claude messages for model: ${model}`);
+      const messages: Anthropic.MessageParam[] = [
+        ...context.map((msg, idx) => ({
+          role: (idx % 2 === 0 ? "user" : "assistant") as "user" | "assistant",
+          content: msg
+        }))
+      ];
 
-    const response = await client.messages.create({
-      model,
-      max_tokens: 2000,
-      system: prompt,
-      messages,
-    });
+      console.log(`Sending request to Claude API...`);
+      const response = await client.messages.create({
+        model,
+        max_tokens: 2000,
+        system: prompt,
+        messages,
+      });
 
-    return response.content[0]?.type === "text" ? response.content[0].text : "No response generated";
+      console.log(`Claude response received successfully`);
+      return response.content[0]?.type === "text" ? response.content[0].text : "No response generated";
+    } catch (error) {
+      console.error(`Claude API error:`, error);
+      console.error(`Error details:`, {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        code: error.code
+      });
+      throw error;
+    }
   }
 
   private static async generateGrokResponse(
@@ -362,24 +379,39 @@ export class AIOrchestrator {
     prompt: string,
     context: string[]
   ): Promise<string> {
-    const client = await this.createGrokClient(userId);
-    
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      { role: "system", content: prompt },
-      ...context.map((msg, idx) => ({
-        role: (idx % 2 === 0 ? "user" : "assistant") as "user" | "assistant",
-        content: msg
-      }))
-    ];
+    try {
+      console.log(`Creating Grok client for user ${userId}`);
+      const client = await this.createGrokClient(userId);
+      
+      console.log(`Preparing Grok messages for model: ${model}`);
+      const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+        { role: "system", content: prompt },
+        ...context.map((msg, idx) => ({
+          role: (idx % 2 === 0 ? "user" : "assistant") as "user" | "assistant",
+          content: msg
+        }))
+      ];
 
-    const response = await client.chat.completions.create({
-      model,
-      messages,
-      max_tokens: 2000,
-      temperature: 0.7,
-    });
+      console.log(`Sending request to Grok API...`);
+      const response = await client.chat.completions.create({
+        model,
+        messages,
+        max_tokens: 2000,
+        temperature: 0.7,
+      });
 
-    return response.choices[0]?.message?.content || "No response generated";
+      console.log(`Grok response received successfully`);
+      return response.choices[0]?.message?.content || "No response generated";
+    } catch (error) {
+      console.error(`Grok API error:`, error);
+      console.error(`Error details:`, {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        code: error.code
+      });
+      throw error;
+    }
   }
 
   static getRecommendedModel(provider: string, task: string, role?: string): string {
@@ -395,7 +427,7 @@ export class AIOrchestrator {
         case "claude":
           return "claude-3-opus-20240229"; // Most capable Claude model for deep research
         case "grok":
-          return "grok-4"; // Latest Grok model for research
+          return "grok-beta"; // Latest Grok model for research
         default:
           return AI_PROVIDERS[provider]?.defaultModel || "";
       }

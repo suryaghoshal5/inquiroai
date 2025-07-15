@@ -244,6 +244,15 @@ Changelog:
   - Fixed critical encryption key length issue in CryptoService causing "Invalid key length" errors
   - Updated development encryption key to exactly 32 bytes as required by AES-256-GCM algorithm
   - API key encryption and decryption now working properly for secure key storage
+- July 15, 2025. Fixed AI model compatibility issues across all providers
+  - Updated OpenAI models to use actual working models: gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-4, gpt-3.5-turbo
+  - Fixed Gemini API calls to use proper getGenerativeModel() method instead of deprecated models.generateContent()
+  - Updated Claude models to use actual working models: claude-3-5-sonnet-20241022, claude-3-opus-20240229, etc.
+  - Updated Grok models to use actual working models: grok-beta, grok-vision-beta
+  - Fixed existing chat records in database to use valid model names
+  - Added comprehensive error logging for all AI providers to help debug API issues
+  - Cleared corrupted encrypted API keys - users need to re-enter API keys in settings
+  - All AI providers now have proper error handling and debugging logs
 ```
 
 ## User Preferences
