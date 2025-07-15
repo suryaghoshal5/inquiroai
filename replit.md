@@ -253,6 +253,12 @@ Changelog:
   - Added comprehensive error logging for all AI providers to help debug API issues
   - Cleared corrupted encrypted API keys - users need to re-enter API keys in settings
   - All AI providers now have proper error handling and debugging logs
+  - Enhanced researcher role with automatic Deep Research mode activation
+    - Added comprehensive Deep Research mode framework that activates automatically when researcher role is selected
+    - Enhanced analytical capabilities including multi-dimensional analysis, pattern recognition, and strategic context awareness
+    - Improved research methodologies with multi-source cross-referencing and validation
+    - Added executive-level synthesis and actionable insights generation
+    - Deep Research mode provides advanced critical thinking and bias detection capabilities
 ```
 
 ## User Preferences
