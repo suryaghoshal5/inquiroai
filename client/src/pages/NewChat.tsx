@@ -17,8 +17,15 @@ export default function NewChat() {
 
   const createChatMutation = useMutation({
     mutationFn: async (config: ChatConfig) => {
-      const response = await apiRequest("POST", "/api/chats", config);
-      return response.json();
+      try {
+        const response = await apiRequest("POST", "/api/chats", config);
+        const data = await response.json();
+        console.log("Chat creation successful:", data);
+        return data;
+      } catch (error) {
+        console.error("Chat creation failed:", error);
+        throw error;
+      }
     },
     onSuccess: (chat) => {
       toast({
@@ -28,6 +35,7 @@ export default function NewChat() {
       navigate(`/chat/${chat.id}`);
     },
     onError: (error) => {
+      console.error("Chat creation error:", error);
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -41,7 +49,7 @@ export default function NewChat() {
       }
       toast({
         title: "Error",
-        description: "Failed to create chat. Please try again.",
+        description: `Failed to create chat: ${error.message || "Please try again."}`,
         variant: "destructive",
       });
     },

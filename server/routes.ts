@@ -128,7 +128,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Continue without initial response - user can still chat
       }
       
-      res.json(chat);
+      // Return a more concise response for the frontend
+      res.json({
+        id: chat.id,
+        userId: chat.userId,
+        title: chat.title,
+        role: chat.role,
+        customRole: chat.customRole,
+        context: chat.context,
+        task: chat.task,
+        inputData: chat.inputData,
+        constraints: chat.constraints,
+        examples: chat.examples,
+        optional: chat.optional,
+        audience: chat.audience,
+        aiProvider: chat.aiProvider,
+        aiModel: chat.aiModel,
+        createdAt: chat.createdAt,
+        updatedAt: chat.updatedAt
+      });
     } catch (error) {
       console.error("Error creating chat:", error);
       res.status(500).json({ message: "Failed to create chat. Please try again." });
