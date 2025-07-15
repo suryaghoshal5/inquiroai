@@ -317,7 +317,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate API key
       const isValid = await AIOrchestrator.validateApiKey(provider, apiKey);
       if (!isValid) {
-        return res.status(400).json({ message: "Invalid API key" });
+        const errorMessage = provider === "grok" 
+          ? "Invalid Grok API key. Please check your API key from https://console.x.ai/ and ensure it's correctly formatted."
+          : "Invalid API key";
+        return res.status(400).json({ message: errorMessage });
       }
       
       // Check if key already exists for this provider

@@ -464,35 +464,61 @@ export class AIOrchestrator {
 
   static async validateApiKey(provider: string, apiKey: string): Promise<boolean> {
     try {
+      console.log(`Validating API key for provider: ${provider}`);
+      
       switch (provider) {
         case "openai":
+          console.log(`Testing OpenAI API key...`);
           const openai = new OpenAI({ apiKey });
           await openai.models.list();
+          console.log(`OpenAI API key validation successful`);
           return true;
+          
         case "gemini":
+          console.log(`Testing Gemini API key...`);
           const gemini = new GoogleGenAI({ apiKey });
-          await gemini.models.generateContent({
-            model: "gemini-1.5-flash",
-            contents: [{ role: "user", parts: [{ text: "test" }] }]
-          });
+          const model = gemini.getGenerativeModel({ model: "gemini-1.5-flash" });
+          await model.generateContent("test");
+          console.log(`Gemini API key validation successful`);
           return true;
+          
         case "claude":
+          console.log(`Testing Claude API key...`);
           const claude = new Anthropic({ apiKey });
           await claude.messages.create({
             model: "claude-3-haiku-20240307",
             max_tokens: 1,
             messages: [{ role: "user", content: "test" }]
           });
+          console.log(`Claude API key validation successful`);
           return true;
+          
         case "grok":
+          console.log(`Testing Grok API key...`);
           const grok = new OpenAI({ baseURL: "https://api.x.ai/v1", apiKey });
-          await grok.models.list();
+          // Test with a minimal chat completion instead of models.list()
+          await grok.chat.completions.create({
+            model: "grok-beta",
+            messages: [{ role: "user", content: "test" }],
+            max_tokens: 1
+          });
+          console.log(`Grok API key validation successful`);
           return true;
+          
         default:
+          console.log(`Unknown provider: ${provider}`);
           return false;
       }
     } catch (error) {
       console.error(`API key validation failed for ${provider}:`, error);
+      console.error(`Error details:`, {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        code: error.code,
+        status: error.status,
+        statusCode: error.statusCode
+      });
       return false;
     }
   }
