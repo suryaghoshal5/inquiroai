@@ -59,6 +59,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Initialize prompts endpoint
+  app.post('/api/initialize-prompts', async (req: any, res) => {
+    try {
+      await PromptService.initializeDefaultPrompts();
+      res.json({ message: "Prompts initialized successfully" });
+    } catch (error) {
+      console.error("Error initializing prompts:", error);
+      res.status(500).json({ message: "Failed to initialize prompts" });
+    }
+  });
+
   // Chat routes
   app.post('/api/chats', mockAuth, async (req: any, res) => {
     try {
