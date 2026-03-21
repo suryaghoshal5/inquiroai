@@ -18,8 +18,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     await setupAuth(app);
   }
 
-  // Initialize default role prompts
-  await PromptService.initializeDefaultPrompts();
+  // Initialize default role prompts (non-fatal if DB is temporarily unavailable)
+  try {
+    await PromptService.initializeDefaultPrompts();
+  } catch (err) {
+    console.warn("Could not initialize default prompts (DB may be unavailable):", err);
+  }
 
   // Create mock user for development
   if (isDevelopment) {
