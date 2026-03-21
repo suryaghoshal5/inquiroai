@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InquiroAI - Intelligent AI Conversations</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366F1',
+                        secondary: '#F59E0B',
+                        accent: '#10B981',
+                        danger: '#EF4444',
+                        'gray-dark': '#1F2937',
+                        'gray-light': '#F8FAFC'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'sans-serif'],
+                        'mono': ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+        }
+        .chat-bubble-user {
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+        }
+        .chat-bubble-ai {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+        }
+        .role-researcher { background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); }
+        .role-pm { background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); }
+        .role-developer { background: linear-gradient(135deg, #10B981 0%, #059669 100%); }
+        .role-writer { background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%); }
+        .role-designer { background: linear-gradient(135deg, #EC4899 0%, #DB2777 100%); }
+        .role-custom { background: linear-gradient(135deg, #6B7280 0%, #4B5563 100%); }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body class="bg-gray-light font-sans">
+    <!-- @COMPONENT: AuthenticationModal -->
+    <div id="authModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 gradient-bg rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-brain text-white text-2xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-dark mb-2">Welcome to InquiroAI</h2>
+                <p class="text-gray-500">Start your intelligent AI conversations</p>
+            </div>
+            
+            <div class="space-y-4">
+                <!-- Google OAuth Button -->
+                <button class="w-full flex items-center justify-center py-3 px-4 border border-gray-300 rounded-xl shadow-sm bg-white text-gray-700 font-medium hover:bg-gray-50 transition duration-200">
+                    <i class="fab fa-google text-red-500 mr-3"></i>
+                    Continue with Google
+                </button>
+                
+                <div class="relative">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-gray-300"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-2 bg-white text-gray-500">or</span>
+                    </div>
+                </div>
+                
+                <!-- Email/Password Form -->
+                <form class="space-y-4">
+                    <div>
+                        <input type="email" placeholder="Email address" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition duration-200" data-mock="true">
+                    </div>
+                    <div>
+                        <input type="password" placeholder="Password" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition duration-200" data-mock="true">
+                    </div>
+                    <button type="submit" class="w-full gradient-bg text-white py-3 px-4 rounded-xl font-medium hover:shadow-lg transition duration-200">
+                        Sign In
+                    </button>
+                </form>
+                
+                <div class="text-center text-sm text-gray-500">
+                    Don't have an account? <a href="#" class="text-primary hover:underline">Sign up</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: AuthenticationModal -->
+
+    <!-- @COMPONENT: MainApplication -->
+    <div class="flex h-screen bg-gray-light">
+        <!-- @COMPONENT: Sidebar -->
+        <div class="w-80 bg-white shadow-lg border-r border-gray-200 flex flex-col">
+            <!-- Header -->
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 gradient-bg rounded-xl flex items-center justify-center">
+                        <i class="fas fa-brain text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-dark">InquiroAI</h1>
+                        <p class="text-sm text-gray-500">Intelligent Conversations</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- New Chat Button -->
+            <div class="p-4">
+                <button id="newChatBtn" class="w-full gradient-bg text-white py-3 px-4 rounded-xl font-medium hover:shadow-lg transition duration-200 flex items-center justify-center space-x-2">
+                    <i class="fas fa-plus"></i>
+                    <span>New Chat</span>
+                </button>
+            </div>
+            
+            <!-- Chat List -->
+            <div class="flex-1 overflow-y-auto px-4 pb-4">
+                <div class="space-y-2">
+                    <!-- @MAP: chatList.map(chat => ( -->
+                    <div class="p-3 rounded-xl hover:bg-gray-50 cursor-pointer transition duration-200 border border-gray-100">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 role-researcher rounded-lg flex items-center justify-center">
+                                <i class="fas fa-search text-white text-sm"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-dark truncate" data-bind="chat.title">Market Research Analysis</p>
+                                <p class="text-xs text-gray-500 truncate" data-bind="chat.lastMessage">Analyzing competitive landscape...</p>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-xs text-gray-400" data-bind="chat.timestamp">2 hours ago</div>
+                    </div>
+                    
+                    <div class="p-3 rounded-xl hover:bg-gray-50 cursor-pointer transition duration-200 border border-gray-100">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 role-developer rounded-lg flex items-center justify-center">
+                                <i class="fas fa-code text-white text-sm"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-dark truncate" data-bind="chat.title">Code Review Session</p>
+                                <p class="text-xs text-gray-500 truncate" data-bind="chat.lastMessage">Reviewing React components...</p>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-xs text-gray-400" data-bind="chat.timestamp">1 day ago</div>
+                    </div>
+                    
+                    <div class="p-3 rounded-xl hover:bg-gray-50 cursor-pointer transition duration-200 border border-gray-100">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 role-writer rounded-lg flex items-center justify-center">
+                                <i class="fas fa-pen-fancy text-white text-sm"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-dark truncate" data-bind="chat.title">Content Strategy</p>
+                                <p class="text-xs text-gray-500 truncate" data-bind="chat.lastMessage">Creating blog post outline...</p>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-xs text-gray-400" data-bind="chat.timestamp">3 days ago</div>
+                    </div>
+                    <!-- @END_MAP -->
+                </div>
+            </div>
+            
+            <!-- User Profile -->
+            <div class="p-4 border-t border-gray-200">
+                <div class="flex items-center space-x-3">
+                    <!-- User avatar with proper object-fit -->
+                    <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=64&h=64" 
+                         alt="User profile" 
+                         class="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
+                         data-bind="user.avatar"
+                         data-mock="true">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-dark truncate" data-bind="user.name" data-mock="true">John Doe</p>
+                        <p class="text-xs text-gray-500 truncate" data-bind="user.email" data-mock="true">john@example.com</p>
+                    </div>
+                    <div class="relative">
+                        <button class="p-2 hover:bg-gray-100 rounded-lg transition duration-200" data-event="click:toggleUserMenu">
+                            <i class="fas fa-ellipsis-vertical text-gray-500"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: Sidebar -->
+        
+        <!-- @COMPONENT: MainContent -->
+        <div class="flex-1 flex flex-col">
+            <!-- @COMPONENT: NewChatForm -->
+            <div id="newChatForm" class="flex-1 overflow-y-auto p-8">
+                <div class="max-w-4xl mx-auto">
+                    <div class="text-center mb-8">
+                        <div class="w-20 h-20 gradient-bg rounded-2xl flex items-center justify-center mx-auto mb-4 animate-float">
+                            <i class="fas fa-rocket text-white text-3xl"></i>
+                        </div>
+                        <h2 class="text-3xl font-bold text-gray-dark mb-2">Create New Chat</h2>
+                        <p class="text-lg text-gray-500">Configure your AI conversation parameters</p>
+                    </div>
+                    
+                    <form class="space-y-6">
+                        <!-- Role Selection -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                            <label class="block text-sm font-semibold text-gray-dark mb-3">
+                                <i class="fas fa-user-tie mr-2 text-primary"></i>
+                                Role Selection
+                            </label>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                <div class="relative">
+                                    <input type="radio" name="role" value="researcher" class="peer sr-only" data-mock="true">
+                                    <label class="flex items-center p-4 rounded-xl border-2 border-gray-200 cursor-pointer hover:border-primary peer-checked:border-primary peer-checked:bg-blue-50 transition duration-200">
+                                        <div class="w-10 h-10 role-researcher rounded-lg flex items-center justify-center mr-3">
+                                            <i class="fas fa-search text-white"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-dark">Researcher</p>
+                                            <p class="text-sm text-gray-500">Data analysis & research</p>
+                                        </div>
+                                    </label>
+                                </div>
+                                
+                                <div class="relative">
+                                    <input type="radio" name="role" value="pm" class="peer sr-only" data-mock="true">
+                                    <label class="flex items-center p-4 rounded-xl border-2 border-gray-200 cursor-pointer hover:border-primary peer-checked:border-primary peer-checked:bg-blue-50 transition duration-200">
+                                        <div class="w-10 h-10 role-pm rounded-lg flex items-center justify-center mr-3">
+                                            <i class="fas fa-chart-line text-white"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-dark">Product Manager</p>
+                                            <p class="text-sm text-gray-500">Strategic planning</p>
+                                        </div>
+                                    </label>
+                                </div>
+                                
+                                <div class="relative">
+                                    <input type="radio" name="role" value="developer" class="peer sr-only" data-mock="true">
+                                    <label class="flex items-center p-4 rounded-xl border-2 border-gray-200 cursor-pointer hover:border-primary peer-checked:border-primary peer-checked:bg-blue-50 transition duration-200">
+                                        <div class="w-10 h-10 role-developer rounded-lg flex items-center justify-center mr-3">
+                                            <i class="fas fa-code text-white"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-dark">Software Developer</p>
+                                            <p class="text-sm text-gray-500">Code & architecture</p>
+                                        </div>
+                                    </label>
+                                </div>
+                                
+                                <div class="relative">
+                                    <input type="radio" name="role" value="writer" class="peer sr-only" data-mock="true">
+                                    <label class="flex items-center p-4 rounded-xl border-2 border-gray-200 cursor-pointer hover:border-primary peer-checked:border-primary peer-checked:bg-blue-50 transition duration-200">
+                                        <div class="w-10 h-10 role-writer rounded-lg flex items-center justify-center mr-3">
+                                            <i class="fas fa-pen-fancy text-white"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-dark">Content Writer</p>
+                                            <p class="text-sm text-gray-500">Creative writing</p>
+                                        </div>
+                                    </label>
+                                </div>
+                                
+                                <div class="relative">
+                                    <input type="radio" name="role" value="designer" class="peer sr-only" data-mock="true">
+                                    <label class="flex items-center p-4 rounded-xl border-2 border-gray-200 cursor-pointer hover:border-primary peer-checked:border-primary peer-checked:bg-blue-50 transition duration-200">
+                                        <div class="w-10 h-10 role-designer rounded-lg flex items-center justify-center mr-3">
+                                            <i class="fas fa-palette text-white"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-dark">Designer</p>
+                                            <p class="text-sm text-gray-500">Creative feedback</p>
+                                        </div>
+                                    </label>
+                                </div>
+                                
+                                <div class="relative">
+                                    <input type="radio" name="role" value="custom" class="peer sr-only" data-mock="true">
+                                    <label class="flex items-center p-4 rounded-xl border-2 border-gray-200 cursor-pointer hover:border-primary peer-checked:border-primary peer-checked:bg-blue-50 transition duration-200">
+                                        <div class="w-10 h-10 role-custom rounded-lg flex items-center justify-center mr-3">
+                                            <i class="fas fa-plus text-white"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-dark">Others</p>
+                                            <p class="text-sm text-gray-500">Custom role</p>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- Custom Role Input -->
+                            <div class="mt-4 hidden" id="customRoleInput">
+                                <input type="text" placeholder="Describe your custom role..." class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition duration-200" data-mock="true">
+                            </div>
+                        </div>
+                        
+                        <!-- Context -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                            <label class="block text-sm font-semibold text-gray-dark mb-3">
+                                <i class="fas fa-info-circle mr-2 text-primary"></i>
+                                Context <span class="text-gray-500 font-normal">(5000 chars max)</span>
+                            </label>
+                            <textarea rows="4" placeholder="Provide background information and context for your conversation..." class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition duration-200 resize-none" data-mock="true"></textarea>
+                            <div class="mt-2 text-sm text-gray-400 text-right">
+                                <span id="contextCount">0</span> / 5000
+                            </div>
+                        </div>
+                        
+                        <!-- Task -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                            <label class="block text-sm font-semibold text-gray-dark mb-3">
+                                <i class="fas fa-tasks mr-2 text-primary"></i>
+                                Task <span class="text-gray-500 font-normal">(200 chars max)</span>
+                            </label>
+                            <input type="text" placeholder="• Define specific tasks (use bullet points)" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition duration-200" data-mock="true">
+                            <div class="mt-2 text-sm text-gray-400 text-right">
+                                <span id="taskCount">0</span> / 200
+                            </div>
+                        </div>
+                        
+                        <!-- Input Data -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                            <label class="block text-sm font-semibold text-gray-dark mb-3">
+                                <i class="fas fa-database mr-2 text-primary"></i>
+                                Input Data <span class="text-gray-500 font-normal">(5000 chars max)</span>
+                            </label>
+                            <textarea rows="4" placeholder="Provide your data, documents, or information..." class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition duration-200 resize-none" data-mock="true"></textarea>
+                            <div class="mt-4 flex items-center space-x-4">
+                                <div class="flex-1">
+                                    <div class="mt-2 text-sm text-gray-400 text-right">
+                                        <span id="inputDataCount">0</span> / 5000
+                                    </div>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button type="button" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium text-gray-600 transition duration-200">
+                                        <i class="fas fa-paperclip mr-2"></i>
+                                        Upload File
+                                    </button>
+                                    <span class="text-sm text-gray-500 flex items-center">PDF, Excel, Word, MD</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Constraints -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                            <label class="block text-sm font-semibold text-gray-dark mb-3">
+                                <i class="fas fa-exclamation-triangle mr-2 text-primary"></i>
+                                Constraints <span class="text-gray-500 font-normal">(200 chars max)</span>
+                            </label>
+                            <input type="text" placeholder="Specify any limitations or constraints..." class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition duration-200" data-mock="true">
+                            <div class="mt-2 text-sm text-gray-400 text-right">
+                                <span id="constraintsCount">0</span> / 200
+                            </div>
+                        </div>
+                        
+                        <!-- Examples -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                            <label class="block text-sm font-semibold text-gray-dark mb-3">
+                                <i class="fas fa-lightbulb mr-2 text-primary"></i>
+                                Examples <span class="text-gray-500 font-normal">(5000 chars max)</span>
+                            </label>
+                            <textarea rows="4" placeholder="Provide examples of desired outputs or formats..." class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition duration-200 resize-none" data-mock="true"></textarea>
+                            <div class="mt-4 flex items-center space-x-4">
+                                <div class="flex-1">
+                                    <div class="mt-2 text-sm text-gray-400 text-right">
+                                        <span id="examplesCount">0</span> / 5000
+                                    </div>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button type="button" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium text-gray-600 transition duration-200">
+                                        <i class="fas fa-paperclip mr-2"></i>
+                                        Upload File
+                                    </button>
+                                    <span class="text-sm text-gray-500 flex items-center">PDF, Excel, Word, MD</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Optional & Audience -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                                <label class="block text-sm font-semibold text-gray-dark mb-3">
+                                    <i class="fas fa-star mr-2 text-primary"></i>
+                                    Optional <span class="text-gray-500 font-normal">(200 chars max)</span>
+                                </label>
+                                <input type="text" placeholder="Additional requirements..." class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition duration-200" data-mock="true">
+                                <div class="mt-2 text-sm text-gray-400 text-right">
+                                    <span id="optionalCount">0</span> / 200
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                                <label class="block text-sm font-semibold text-gray-dark mb-3">
+                                    <i class="fas fa-users mr-2 text-primary"></i>
+                                    Audience <span class="text-gray-500 font-normal">(200 chars max)</span>
+                                </label>
+                                <input type="text" placeholder="Target audience specification..." class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition duration-200" data-mock="true">
+                                <div class="mt-2 text-sm text-gray-400 text-right">
+                                    <span id="audienceCount">0</span> / 200
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- AI Engine Selection -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                            <label class="block text-sm font-semibold text-gray-dark mb-3">
+                                <i class="fas fa-robot mr-2 text-primary"></i>
+                                AI Engine Selection
+                            </label>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-2">Provider</label>
+                                    <select class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition duration-200" data-mock="true">
+                                        <option value="openai">OpenAI</option>
+                                        <option value="gemini">Google Gemini</option>
+                                        <option value="claude">Anthropic Claude</option>
+                                        <option value="grok">Grok</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-2">Model</label>
+                                    <select class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition duration-200" data-mock="true">
+                                        <option value="gpt-4">GPT-4</option>
+                                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                        <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mt-4 p-4 bg-blue-50 rounded-xl">
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-info-circle text-blue-500"></i>
+                                    <span class="text-sm text-blue-700">
+                                        <strong>Recommended:</strong> GPT-4 for complex analysis tasks
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="flex justify-end space-x-4 pt-6">
+                            <button type="button" class="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition duration-200">
+                                Save as Template
+                            </button>
+                            <button type="submit" class="px-8 py-3 gradient-bg text-white rounded-xl font-medium hover:shadow-lg transition duration-200">
+                                Start Conversation
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: NewChatForm -->
+            
+            <!-- @COMPONENT: ChatInterface -->
+            <div id="chatInterface" class="flex-1 flex flex-col hidden">
+                <!-- Chat Header -->
+                <div class="bg-white shadow-sm border-b border-gray-200 p-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 role-researcher rounded-xl flex items-center justify-center">
+                                <i class="fas fa-search text-white text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-dark" data-bind="chat.title">Market Research Analysis</h3>
+                                <p class="text-sm text-gray-500">Researcher • <span class="text-accent">GPT-4</span></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button class="p-2 hover:bg-gray-100 rounded-lg transition duration-200" title="Share Chat">
+                                <i class="fas fa-share text-gray-500"></i>
+                            </button>
+                            <button class="p-2 hover:bg-gray-100 rounded-lg transition duration-200" title="Chat Settings">
+                                <i class="fas fa-cog text-gray-500"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Chat Messages -->
+                <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                    <!-- User Message -->
+                    <div class="flex justify-end">
+                        <div class="max-w-3xl">
+                            <div class="chat-bubble-user text-white rounded-2xl rounded-br-md p-4 shadow-sm">
+                                <p class="text-sm leading-relaxed" data-bind="message.content" data-mock="true">
+                                    I need help analyzing the competitive landscape for a new SaaS product in the project management space. Can you help me identify key competitors, their strengths, weaknesses, and market positioning?
+                                </p>
+                            </div>
+                            <div class="mt-2 text-xs text-gray-500 text-right">
+                                <span data-bind="message.timestamp">2:30 PM</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- AI Response -->
+                    <div class="flex justify-start">
+                        <div class="max-w-3xl">
+                            <div class="chat-bubble-ai text-white rounded-2xl rounded-bl-md p-4 shadow-sm">
+                                <div class="text-sm leading-relaxed" data-bind="message.content" data-mock="true">
+                                    <p class="mb-3">I'll help you analyze the competitive landscape for SaaS project management tools. Let me break this down into key competitors and their positioning:</p>
+                                    
+                                    <div class="mb-4">
+                                        <p class="font-semibold mb-2">🏆 Market Leaders:</p>
+                                        <ul class="list-disc list-inside ml-4 space-y-1">
+                                            <li><strong>Asana:</strong> Strong in team collaboration, intuitive UI, weak in advanced reporting</li>
+                                            <li><strong>Monday.com:</strong> Highly customizable, great visual interface, can be overwhelming for small teams</li>
+                                            <li><strong>Trello:</strong> Simple Kanban boards, easy to use, limited advanced features</li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <p class="mb-2">Would you like me to dive deeper into any specific competitor or analyze a particular aspect like pricing strategies or feature gaps?</p>
+                                </div>
+                            </div>
+                            <div class="mt-2 flex items-center justify-between">
+                                <div class="text-xs text-gray-500">
+                                    <span data-bind="message.timestamp">2:31 PM</span> • <span class="text-accent">GPT-4</span>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button class="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 transition duration-200" title="Copy">
+                                        <i class="fas fa-copy text-xs"></i>
+                                    </button>
+                                    <button class="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 transition duration-200" title="Like">
+                                        <i class="fas fa-thumbs-up text-xs"></i>
+                                    </button>
+                                    <button class="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 transition duration-200" title="Dislike">
+                                        <i class="fas fa-thumbs-down text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Typing Indicator -->
+                    <div class="flex justify-start" id="typingIndicator" style="display: none;">
+                        <div class="max-w-3xl">
+                            <div class="bg-gray-100 rounded-2xl rounded-bl-md p-4 shadow-sm">
+                                <div class="flex items-center space-x-2">
+                                    <div class="flex space-x-1">
+                                        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                                        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                                        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                                    </div>
+                                    <span class="text-sm text-gray-500">AI is thinking...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Chat Input -->
+                <div class="bg-white border-t border-gray-200 p-6">
+                    <div class="flex items-end space-x-4">
+                        <div class="flex-1">
+                            <div class="relative">
+                                <textarea rows="1" placeholder="Type your message..." class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition duration-200 resize-none" data-mock="true"></textarea>
+                                <button class="absolute right-3 top-3 p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 transition duration-200" title="Attach File">
+                                    <i class="fas fa-paperclip"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button class="px-6 py-3 gradient-bg text-white rounded-xl font-medium hover:shadow-lg transition duration-200 flex items-center space-x-2">
+                            <i class="fas fa-paper-plane"></i>
+                            <span>Send</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: ChatInterface -->
+        </div>
+        <!-- @END_COMPONENT: MainContent -->
+    </div>
+    <!-- @END_COMPONENT: MainApplication -->
+    
+    <!-- @COMPONENT: SettingsModal -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl max-w-4xl w-full mx-4 max-h-screen overflow-y-auto">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-2xl font-bold text-gray-dark">Settings</h2>
+                    <button class="p-2 hover:bg-gray-100 rounded-lg transition duration-200" id="closeSettings">
+                        <i class="fas fa-times text-gray-500"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Settings Navigation -->
+                    <div class="lg:col-span-1">
+                        <nav class="space-y-2">
+                            <button class="w-full text-left px-4 py-3 rounded-xl bg-primary text-white font-medium">
+                                <i class="fas fa-key mr-3"></i>
+                                API Keys
+                            </button>
+                            <button class="w-full text-left px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-700 font-medium transition duration-200">
+                                <i class="fas fa-user mr-3"></i>
+                                Profile
+                            </button>
+                            <button class="w-full text-left px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-700 font-medium transition duration-200">
+                                <i class="fas fa-cog mr-3"></i>
+                                Preferences
+                            </button>
+                            <button class="w-full text-left px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-700 font-medium transition duration-200">
+                                <i class="fas fa-shield-alt mr-3"></i>
+                                Security
+                            </button>
+                        </nav>
+                    </div>
+                    
+                    <!-- Settings Content -->
+                    <div class="lg:col-span-2">
+                        <div id="apiKeysSection">
+                            <div class="mb-6">
+                                <h3 class="text-lg font-semibold text-gray-dark mb-2">API Keys Management</h3>
+                                <p class="text-gray-600 text-sm">Securely manage your AI provider API keys for personalized usage.</p>
+                            </div>
+                            
+                            <!-- Add New API Key -->
+                            <div class="bg-gray-50 rounded-xl p-6 mb-6">
+                                <h4 class="font-medium text-gray-dark mb-4">Add New API Key</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-600 mb-2">Provider</label>
+                                        <select class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition duration-200" data-mock="true">
+                                            <option value="">Select Provider</option>
+                                            <option value="openai">OpenAI</option>
+                                            <option value="gemini">Google Gemini</option>
+                                            <option value="claude">Anthropic Claude</option>
+                                            <option value="grok">Grok</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-600 mb-2">API Key</label>
+                                        <input type="password" placeholder="Enter your API key..." class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition duration-200" data-mock="true">
+                                    </div>
+                                </div>
+                                <div class="mt-4 flex justify-end">
+                                    <button class="px-6 py-2 gradient-bg text-white rounded-lg font-medium hover:shadow-lg transition duration-200">
+                                        Add Key
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Existing API Keys -->
+                            <div class="space-y-4">
+                                <div class="bg-white border border-gray-200 rounded-xl p-6">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-4">
+                                            <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                                                <i class="fas fa-robot text-green-600"></i>
+                                            </div>
+                                            <div>
+                                                <h4 class="font-medium text-gray-dark">OpenAI</h4>
+                                                <p class="text-sm text-gray-500">sk-...7x9A • <span class="text-accent">Verified</span></p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <button class="p-2 hover:bg-gray-100 rounded-lg transition duration-200" title="Test Connection">
+                                                <i class="fas fa-flask text-gray-500"></i>
+                                            </button>
+                                            <button class="p-2 hover:bg-gray-100 rounded-lg transition duration-200" title="Remove Key">
+                                                <i class="fas fa-trash text-red-500"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-white border border-gray-200 rounded-xl p-6">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-4">
+                                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                                                <i class="fas fa-star text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h4 class="font-medium text-gray-dark">Google Gemini</h4>
+                                                <p class="text-sm text-gray-500">AIza...k2M • <span class="text-yellow-500">Pending</span></p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <button class="p-2 hover:bg-gray-100 rounded-lg transition duration-200" title="Test Connection">
+                                                <i class="fas fa-flask text-gray-500"></i>
+                                            </button>
+                                            <button class="p-2 hover:bg-gray-100 rounded-lg transition duration-200" title="Remove Key">
+                                                <i class="fas fa-trash text-red-500"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: SettingsModal -->
+    
+    <script>
+        // TODO: Implement business logic, API calls, and state management
+        
+        (function() {
+            // Character count functionality
+            function setupCharacterCount(inputId, countId, maxLength) {
+                const input = document.getElementById(inputId);
+                const counter = document.getElementById(countId);
+                if (input && counter) {
+                    input.addEventListener('input', function() {
+                        const currentLength = this.value.length;
+                        counter.textContent = currentLength;
+                        
+                        if (currentLength > maxLength * 0.9) {
+                            counter.classList.add('text-red-500');
+                        } else {
+                            counter.classList.remove('text-red-500');
+                        }
+                    });
+                }
+            }
+            
+            // Initialize character counters
+            setupCharacterCount('context', 'contextCount', 5000);
+            setupCharacterCount('task', 'taskCount', 200);
+            setupCharacterCount('inputData', 'inputDataCount', 5000);
+            setupCharacterCount('constraints', 'constraintsCount', 200);
+            setupCharacterCount('examples', 'examplesCount', 5000);
+            setupCharacterCount('optional', 'optionalCount', 200);
+            setupCharacterCount('audience', 'audienceCount', 200);
+            
+            // Modal functionality
+            function showModal(modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.classList.remove('hidden');
+                }
+            }
+            
+            function hideModal(modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.classList.add('hidden');
+                }
+            }
+            
+            // New chat button functionality
+            const newChatBtn = document.getElementById('newChatBtn');
+            if (newChatBtn) {
+                newChatBtn.addEventListener('click', function() {
+                    // TODO: Initialize new chat form
+                    console.log('New chat button clicked');
+                });
+            }
+            
+            // Role selection functionality
+            const roleInputs = document.querySelectorAll('input[name="role"]');
+            const customRoleInput = document.getElementById('customRoleInput');
+            
+            roleInputs.forEach(input => {
+                input.addEventListener('change', function() {
+                    if (this.value === 'custom') {
+                        customRoleInput.classList.remove('hidden');
+                    } else {
+                        customRoleInput.classList.add('hidden');
+                    }
+                });
+            });
+            
+            // Settings modal functionality
+            const settingsBtn = document.querySelector('[data-event="click:toggleUserMenu"]');
+            const settingsModal = document.getElementById('settingsModal');
+            const closeSettings = document.getElementById('closeSettings');
+            
+            if (settingsBtn) {
+                settingsBtn.addEventListener('click', function() {
+                    showModal('settingsModal');
+                });
+            }
+            
+            if (closeSettings) {
+                closeSettings.addEventListener('click', function() {
+                    hideModal('settingsModal');
+                });
+            }
+            
+            // Auto-resize textarea
+            const textareas = document.querySelectorAll('textarea');
+            textareas.forEach(textarea => {
+                textarea.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = this.scrollHeight + 'px';
+                });
+            });
+            
+            // Simulate typing effect for demo
+            function simulateTyping() {
+                const typingIndicator = document.getElementById('typingIndicator');
+                if (typingIndicator) {
+                    typingIndicator.style.display = 'block';
+                    
+                    setTimeout(() => {
+                        typingIndicator.style.display = 'none';
+                    }, 3000);
+                }
+            }
+            
+            // Initialize demo data
+            console.log('InquiroAI initialized');
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+[1G[0Kfile:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345
+o?t(o):n(u)},"cb"),s=new r(function(o,u){n=o,t=u}).catch(o=>{throw Error.captureStackTrace(
+                                                                         ^
+
+error: password authentication failed for user 'neondb_owner'
+    at [90mfile:///home/runner/workspace/[39mnode_modules/[4m@neondatabase/serverless[24m/index.mjs:1345:74
+[90m    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)[39m
+    at async NeonPreparedQuery.execute [90m(/home/runner/workspace/[39mnode_modules/[4msrc[24m/neon-serverless/session.ts:102:18[90m)[39m
+    at async DatabaseStorage.getRolePrompt [90m(/home/runner/workspace/[39mserver/storage.ts:171:22[90m)[39m
+    at async Function.initializeDefaultPrompts [90m(/home/runner/workspace/[39mserver/services/promptService.ts:1682:30[90m)[39m
+    at async registerRoutes [90m(/home/runner/workspace/[39mserver/routes.ts:22:3[90m)[39m
+    at async <anonymous> [90m(/home/runner/workspace/[39mserver/index.ts:40:18[90m)[39m {
+  length: [33m75[39m,
+  severity: [32m'ERROR'[39m,
+  code: [32m'28P01'[39m,
+  detail: [90mundefined[39m,
+  hint: [90mundefined[39m,
+  position: [90mundefined[39m,
+  internalPosition: [90mundefined[39m,
+  internalQuery: [90mundefined[39m,
+  where: [90mundefined[39m,
+  schema: [90mundefined[39m,
+  table: [90mundefined[39m,
+  column: [90mundefined[39m,
+  dataType: [90mundefined[39m,
+  constraint: [90mundefined[39m,
+  file: [90mundefined[39m,
+  line: [90mundefined[39m,
+  routine: [90mundefined[39m
+}
+
+Node.js v20.20.0
+[1G[0K⠙[1G[0K[1mnpm[22m [96mnotice[39m
+[1mnpm[22m [96mnotice[39m New [31mmajor[39m version of npm available! [31m10.8.2[39m -> [34m11.12.0[39m
+[1mnpm[22m [96mnotice[39m Changelog: [34mhttps://github.com/npm/cli/releases/tag/v11.12.0[39m
+[1mnpm[22m [96mnotice[39m To update run: [4mnpm install -g npm@11.12.0[24m
+[1mnpm[22m [96mnotice[39m
+[1G[0K⠙[1G[0K
