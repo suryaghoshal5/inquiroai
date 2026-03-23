@@ -13,6 +13,10 @@ import Chat from "@/pages/Chat";
 import NewChat from "@/pages/NewChat";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
+import NewProject from "@/pages/NewProject";
+import ProjectDashboard from "@/pages/ProjectDashboard";
+import EditProject from "@/pages/EditProject";
+import NewProjectChat from "@/pages/NewProjectChat";
 import type { ApiKey } from "@/types";
 
 function AuthenticatedHome() {
@@ -26,12 +30,12 @@ function AuthenticatedHome() {
 
   useEffect(() => {
     if (isAuthenticated && !apiKeysLoading && apiKeys !== undefined) {
-      // If user has no API keys, redirect to settings
+      // If user has no API keys, redirect to settings first
       if (apiKeys.length === 0) {
         navigate("/settings");
       } else {
-        // If user has API keys, redirect to new chat page
-        navigate("/chat/new");
+        // Land on the home dashboard
+        navigate("/chat");
       }
     }
   }, [isAuthenticated, apiKeysLoading, apiKeys, navigate]);
@@ -80,6 +84,10 @@ function Router() {
           <Route path="/chat/new" component={NewChat} />
           <Route path="/chat/:id" component={Chat} />
           <Route path="/settings" component={Settings} />
+          <Route path="/projects/new" component={NewProject} />
+          <Route path="/projects/:id/edit" component={EditProject} />
+          <Route path="/projects/:id" component={ProjectDashboard} />
+          <Route path="/projects/:id/chat/new" component={NewProjectChat} />
         </>
       )}
       <Route component={NotFound} />

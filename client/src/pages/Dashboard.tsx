@@ -1,45 +1,70 @@
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-import { Brain, Plus, MessageCircle, Settings, Clock, ArrowRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Brain, Plus, MessageCircle, Settings, ArrowRight,
+  FolderOpen, ChevronDown, ChevronRight, FolderPlus, Zap,
+  Bot, Search, Link2,
+} from "lucide-react";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import type { Chat } from "@/types";
+import LinkToProjectModal from "@/components/LinkToProjectModal";
+import type { Chat, Project } from "@/types";
 
 export default function Dashboard() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user: rawUser } = useAuth();
+  const user = rawUser as import("@/types").User | undefined;
   const [, navigate] = useLocation();
+  const [collapsedProjects, setCollapsedProjects] = useState<Set<number>>(new Set());
+  const [searchTerm, setSearchTerm] = useState("");
+  const [linkingChat, setLinkingChat] = useState<Chat | null>(null);
 
-  const { data: chats, isLoading: chatsLoading, error } = useQuery<Chat[]>({
+  const { data: projects = [], isLoading: projectsLoading } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: chats = [], isLoading: chatsLoading, error } = useQuery<Chat[]>({
     queryKey: ["/api/chats"],
     enabled: isAuthenticated,
   });
 
-
-
-  const handleNewChat = () => {
-    navigate("/chat/new");
+  const toggleProject = (id: number) => {
+    setCollapsedProjects(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   };
 
-  const handleChatClick = (chatId: number) => {
-    navigate(`/chat/${chatId}`);
+  const formatTimeAgo = (date: Date | string) => {
+    const diff = Date.now() - new Date(date).getTime();
+    const days = Math.floor(diff / 86400000);
+    const hours = Math.floor(diff / 3600000);
+    const mins = Math.floor(diff / 60000);
+    if (days > 0) return `${days}d ago`;
+    if (hours > 0) return `${hours}h ago`;
+    if (mins > 0) return `${mins}m ago`;
+    return "Just now";
   };
 
-  const handleSettingsClick = () => {
-    navigate("/settings");
-  };
+  const filterText = searchTerm.toLowerCase();
 
-  const formatTimeAgo = (date: Date) => {
-    const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
-    if (diffInSeconds < 60) return "Just now";
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    return `${Math.floor(diffInSeconds / 86400)}d ago`;
-  };
+  // Standalone chats (no project)
+  const quickChats = chats.filter(c =>
+    !c.projectId &&
+    (filterText === "" || c.title.toLowerCase().includes(filterText))
+  );
+
+  // Filtered projects
+  const filteredProjects = projects.filter(p =>
+    filterText === "" ||
+    p.name.toLowerCase().includes(filterText) ||
+    (p.chats ?? []).some(c => c.title.toLowerCase().includes(filterText))
+  );
 
   if (isLoading) {
     return (
@@ -54,9 +79,7 @@ export default function Dashboard() {
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  if (!isAuthenticated) return null;
 
   if (error && isUnauthorizedError(error)) {
     return (
@@ -66,120 +89,298 @@ export default function Dashboard() {
             <Brain className="w-8 h-8 text-white" />
           </div>
           <p className="text-gray-600 mb-4">Session expired. Please log in again.</p>
-          <Button onClick={() => window.location.href = "/api/login"}>
-            Log In
-          </Button>
+          <Button onClick={() => window.location.href = "/api/login"}>Log In</Button>
         </div>
       </div>
     );
   }
 
+  const isLoaded = !projectsLoading && !chatsLoading;
+  const hasAnything = projects.length > 0 || quickChats.length > 0;
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+      {/* Top nav */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 gradient-bg rounded-xl flex items-center justify-center">
+            <div className="w-9 h-9 gradient-bg rounded-xl flex items-center justify-center">
               <Brain className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">InquiroAI</h1>
-              <p className="text-sm text-gray-600">Your AI-powered conversation platform</p>
+              <h1 className="text-lg font-bold text-gray-900 leading-none">InquiroAI</h1>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email : ""}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/settings")}>
+              <Settings className="w-4 h-4 text-gray-500" />
+            </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={handleSettingsClick}
-              className="flex items-center gap-2"
+              onClick={() => navigate("/chat/new")}
+              className="flex items-center gap-1.5"
             >
-              <Settings className="w-4 h-4" />
-              Settings
+              <Zap className="w-3.5 h-3.5 text-amber-500" />
+              Quick Chat
             </Button>
             <Button
-              onClick={handleNewChat}
-              className="flex items-center gap-2 gradient-bg hover:opacity-90"
+              size="sm"
+              onClick={() => navigate("/projects/new")}
+              className="gradient-bg text-white flex items-center gap-1.5"
             >
-              <Plus className="w-4 h-4" />
-              New Chat
+              <FolderPlus className="w-3.5 h-3.5" />
+              New Project
             </Button>
           </div>
         </div>
+      </div>
 
-        {/* Chat List */}
-        <div className="grid gap-4">
-          <div className="flex items-center gap-2 mb-4">
-            <MessageCircle className="w-5 h-5 text-gray-700" />
-            <h2 className="text-lg font-semibold text-gray-900">Recent Chats</h2>
-          </div>
+      <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
 
-          {chatsLoading ? (
-            <div className="grid gap-4">
-              {[1, 2, 3].map((i) => (
-                <Card key={i} className="animate-pulse">
-                  <CardHeader className="pb-3">
-                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-3 bg-gray-200 rounded w-full mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-                  </CardContent>
-                </Card>
-              ))}
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search projects and chats…"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+          />
+        </div>
+
+        {/* Empty state */}
+        {isLoaded && !hasAnything && (
+          <div className="text-center py-20">
+            <div className="w-20 h-20 gradient-bg rounded-3xl flex items-center justify-center mx-auto mb-5">
+              <Brain className="w-10 h-10 text-white" />
             </div>
-          ) : chats && chats.length > 0 ? (
-            <div className="grid gap-4">
-              {chats.map((chat) => (
-                <Card
-                  key={chat.id}
-                  className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-blue-500"
-                  onClick={() => handleChatClick(chat.id)}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg text-gray-900">{chat.title}</CardTitle>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Clock className="w-4 h-4" />
-                        {formatTimeAgo(new Date(chat.updatedAt))}
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to InquiroAI</h2>
+            <p className="text-gray-500 mb-8 max-w-sm mx-auto">
+              Create a project to organise your AI conversations, or jump into a quick one-off chat.
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <Button onClick={() => navigate("/projects/new")} className="gradient-bg text-white px-6">
+                <FolderPlus className="w-4 h-4 mr-2" /> New Project
+              </Button>
+              <Button variant="outline" onClick={() => navigate("/chat/new")} className="px-6">
+                <Zap className="w-4 h-4 mr-2 text-amber-500" /> Quick Chat
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Projects section */}
+        {(projectsLoading || filteredProjects.length > 0) && (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                <FolderOpen className="w-4 h-4 text-blue-500" /> Projects
+                {!projectsLoading && <Badge variant="secondary">{projects.length}</Badge>}
+              </h2>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/projects/new")} className="text-blue-600 text-xs gap-1">
+                <Plus className="w-3.5 h-3.5" /> New Project
+              </Button>
+            </div>
+
+            {projectsLoading ? (
+              <div className="space-y-3">
+                {[1, 2].map(i => <Skeleton key={i} className="h-28 rounded-2xl" />)}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredProjects.map(project => {
+                  const projectChats = (project.chats ?? []).filter(c =>
+                    filterText === "" || c.title.toLowerCase().includes(filterText)
+                  );
+                  const isCollapsed = collapsedProjects.has(project.id);
+
+                  return (
+                    <div key={project.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                      {/* Project header row */}
+                      <div
+                        className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                        onClick={() => toggleProject(project.id)}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          {isCollapsed
+                            ? <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+                            : <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+                          }
+                          <div className="w-8 h-8 gradient-bg rounded-lg flex items-center justify-center shrink-0">
+                            <FolderOpen className="w-4 h-4 text-white" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-gray-900 truncate">{project.name}</p>
+                            {project.description && (
+                              <p className="text-xs text-gray-400 truncate">{project.description}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 ml-3">
+                          <div className="flex items-center gap-1 text-xs text-gray-400">
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            {projectChats.length}
+                          </div>
+                          {project.aiModel && (
+                            <Badge variant="outline" className="text-xs font-normal hidden sm:flex">
+                              <Bot className="w-2.5 h-2.5 mr-1" />{project.aiModel.split("/").pop()}
+                            </Badge>
+                          )}
+                          <button
+                            onClick={e => { e.stopPropagation(); navigate(`/projects/${project.id}`); }}
+                            className="text-xs text-blue-500 hover:text-blue-700 font-medium px-2 py-0.5 rounded-lg hover:bg-blue-50 transition-colors"
+                          >
+                            Open
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Chat rows */}
+                      {!isCollapsed && (
+                        <div className="border-t border-gray-100">
+                          {projectChats.length === 0 ? (
+                            <div className="px-5 py-4 text-center">
+                              <p className="text-sm text-gray-400">No chats yet</p>
+                            </div>
+                          ) : (
+                            projectChats.map((chat, idx) => (
+                              <div
+                                key={chat.id}
+                                className={`flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors group ${
+                                  idx < projectChats.length - 1 ? "border-b border-gray-50" : ""
+                                }`}
+                              >
+                                <div
+                                  className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                                  onClick={() => navigate(`/chat/${chat.id}`)}
+                                >
+                                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 role-${chat.role.replace("_", "-")}`}>
+                                    <MessageCircle className="w-3.5 h-3.5 text-white" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-medium text-gray-800 truncate">{chat.title}</p>
+                                    {chat.lastMessage && (
+                                      <p className="text-xs text-gray-400 truncate">{chat.lastMessage}</p>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0 ml-3">
+                                  <button
+                                    onClick={e => { e.stopPropagation(); setLinkingChat(chat); }}
+                                    title="Move to another project"
+                                    className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 px-2 py-1 rounded-lg hover:bg-blue-50 transition-all"
+                                  >
+                                    <Link2 className="w-3 h-3" />
+                                  </button>
+                                  <span className="text-xs text-gray-300">
+                                    {formatTimeAgo(chat.lastMessageTime || chat.updatedAt)}
+                                  </span>
+                                  <ArrowRight
+                                    className="w-3.5 h-3.5 text-gray-300 cursor-pointer"
+                                    onClick={() => navigate(`/chat/${chat.id}`)}
+                                  />
+                                </div>
+                              </div>
+                            ))
+                          )}
+                          {/* New chat CTA inside project */}
+                          <div
+                            onClick={() => navigate(`/projects/${project.id}/chat/new`)}
+                            className="flex items-center gap-2 px-5 py-3 text-sm text-blue-500 hover:text-blue-700 hover:bg-blue-50 cursor-pointer transition-colors border-t border-gray-100"
+                          >
+                            <Plus className="w-3.5 h-3.5" /> New Chat in {project.name}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Quick Chats section */}
+        {(chatsLoading || quickChats.length > 0) && (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-500" /> Quick Chats
+                {!chatsLoading && <Badge variant="secondary">{quickChats.length}</Badge>}
+              </h2>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/chat/new")} className="text-amber-600 text-xs gap-1">
+                <Plus className="w-3.5 h-3.5" /> New Quick Chat
+              </Button>
+            </div>
+
+            {chatsLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 rounded-xl" />)}
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm divide-y divide-gray-50 overflow-hidden">
+                {quickChats.map(chat => (
+                  <div
+                    key={chat.id}
+                    className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors group"
+                  >
+                    {/* Clickable chat area */}
+                    <div
+                      className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                      onClick={() => navigate(`/chat/${chat.id}`)}
+                    >
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 role-${chat.role.replace("_", "-")}`}>
+                        <MessageCircle className="w-4 h-4 text-white" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-800 truncate">{chat.title}</p>
+                        <p className="text-xs text-gray-400">
+                          {chat.role.replace(/_/g, " ")} · {chat.aiProvider?.toUpperCase()}
+                          {chat.lastMessage && ` · ${chat.lastMessage.slice(0, 60)}…`}
+                        </p>
                       </div>
                     </div>
-                    <CardDescription className="text-gray-600">
-                      {chat.role.charAt(0).toUpperCase() + chat.role.slice(1).replace('_', ' ')} • {chat.aiProvider.toUpperCase()}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-gray-700 line-clamp-2">
-                        {chat.lastMessage || "No messages yet"}
-                      </p>
-                      <ArrowRight className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />
+                    {/* Right actions */}
+                    <div className="flex items-center gap-2 shrink-0 ml-3">
+                      <button
+                        onClick={e => { e.stopPropagation(); setLinkingChat(chat); }}
+                        title="Link to project"
+                        className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-50 transition-all"
+                      >
+                        <Link2 className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Link</span>
+                      </button>
+                      <span className="text-xs text-gray-300">
+                        {formatTimeAgo(chat.lastMessageTime || chat.updatedAt)}
+                      </span>
+                      <ArrowRight
+                        className="w-3.5 h-3.5 text-gray-300 cursor-pointer"
+                        onClick={() => navigate(`/chat/${chat.id}`)}
+                      />
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <Card className="text-center py-12">
-              <CardContent>
-                <div className="w-16 h-16 gradient-bg rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <MessageCircle className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No chats yet</h3>
-                <p className="text-gray-600 mb-4">
-                  Create your first AI conversation to get started.
-                </p>
-                <Button onClick={handleNewChat} className="gradient-bg hover:opacity-90">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create New Chat
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
       </div>
+
+      {/* Link to project modal */}
+      {linkingChat && (
+        <LinkToProjectModal
+          chatId={linkingChat.id}
+          chatTitle={linkingChat.title}
+          currentProjectId={linkingChat.projectId}
+          open={!!linkingChat}
+          onClose={() => setLinkingChat(null)}
+        />
+      )}
     </div>
   );
 }

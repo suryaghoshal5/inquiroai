@@ -118,7 +118,7 @@ export default function Settings() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-600 mb-6">
-                    Securely manage your AI provider API keys for personalized usage. Your keys are encrypted and stored securely.
+                    Add your API keys to enable AI models. Add an OpenRouter key to access all providers with a single key, or add individual provider keys below.
                   </p>
                   <ApiKeyManager />
                 </CardContent>

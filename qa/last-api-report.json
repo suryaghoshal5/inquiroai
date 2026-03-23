@@ -1,0 +1,171 @@
+{
+  "runAt": "2026-03-23T14:06:14.794Z",
+  "results": [
+    {
+      "auditor": "endpointTester (happy path)",
+      "phase": "api",
+      "issues": [
+        {
+          "title": "GET /api/ai-providers — response is not an array",
+          "severity": "P2",
+          "phase": "api",
+          "category": "response-shape",
+          "reproSteps": [
+            "GET /api/ai-providers",
+            "Inspect JSON body"
+          ],
+          "expected": "Array of { name, models, defaultModel }",
+          "actual": "{\"openai\":{\"name\":\"OpenAI\",\"models\":[\"gpt-4o\",\"gpt-4o-mini\",\"gpt-4-turbo\",\"gpt-4\",\"gpt-3.5-turbo\"],\"defaultModel\":\"gpt-4o\"},\"gemini\":{\"name\":\"Google Gemini\",\"models\":[\"gemini-2.0-flash-exp\",\"gemini-1.5-pro\",\"gemini-1.5-flash\",\"gemini-1.5-flash-8b\",\"gemini-1.0-pro\"],\"defaultModel\":\"gemini-2.0-flash-exp\"},\"claude\":{\"name\":\"Anthropic Claude\",\"models\":[\"claude-3-5-sonnet-20241022\",\"claude-3-opus-20240229\",\"claude-3-haiku-20240307\",\"claude-3-sonnet-20240229\"],\"defaultModel\":\"claude-3-5-sonnet-20241022\"},\"grok\":{\"name\":\"Grok\",\"models\":[\"grok-beta\",\"grok-vision-beta\"],\"defaultModel\":\"grok-beta\"}}",
+          "timestamp": "2026-03-23T14:06:13.718Z"
+        }
+      ],
+      "passCount": 7,
+      "failCount": 1,
+      "durationMs": 350
+    },
+    {
+      "auditor": "edgeCaseTester",
+      "phase": "api",
+      "issues": [
+        {
+          "title": "POST /api/chats with empty body — returns 500 on invalid input (should be 4xx)",
+          "severity": "P1",
+          "phase": "api",
+          "category": "error-handling",
+          "reproSteps": [
+            "POST /api/chats with empty body"
+          ],
+          "expected": "400 or 422 with descriptive error message",
+          "actual": "500 Internal Server Error — invalid input causes server crash",
+          "timestamp": "2026-03-23T14:06:13.893Z"
+        },
+        {
+          "title": "POST /api/chats missing task/context — returns 500 on invalid input (should be 4xx)",
+          "severity": "P1",
+          "phase": "api",
+          "category": "error-handling",
+          "reproSteps": [
+            "POST /api/chats missing task/context"
+          ],
+          "expected": "400 or 422 with descriptive error message",
+          "actual": "500 Internal Server Error — invalid input causes server crash",
+          "timestamp": "2026-03-23T14:06:13.897Z"
+        },
+        {
+          "title": "POST /api/chats with invalid role — returns 500 on invalid input (should be 4xx)",
+          "severity": "P1",
+          "phase": "api",
+          "category": "error-handling",
+          "reproSteps": [
+            "POST /api/chats with invalid role"
+          ],
+          "expected": "400 or 422 with descriptive error message",
+          "actual": "500 Internal Server Error — invalid input causes server crash",
+          "timestamp": "2026-03-23T14:06:13.914Z"
+        },
+        {
+          "title": "GET /api/chats/notanumber — returns 500 (NaN passed to DB)",
+          "severity": "P1",
+          "phase": "api",
+          "category": "validation",
+          "reproSteps": [
+            "GET /api/chats/notanumber"
+          ],
+          "expected": "400 Bad Request — invalid ID format",
+          "actual": "500 Internal Server Error — NaN passed to Drizzle query",
+          "timestamp": "2026-03-23T14:06:13.954Z"
+        },
+        {
+          "title": "POST /api/chats with text/plain content-type causes 500",
+          "severity": "P1",
+          "phase": "api",
+          "category": "error-handling",
+          "reproSteps": [
+            "POST /api/chats with Content-Type: text/plain, body: \"not json\""
+          ],
+          "expected": "400 Bad Request",
+          "actual": "500 — server crashed on unexpected content type",
+          "timestamp": "2026-03-23T14:06:14.009Z"
+        }
+      ],
+      "passCount": 8,
+      "failCount": 5,
+      "durationMs": 131
+    },
+    {
+      "auditor": "authBoundaryTester",
+      "phase": "api",
+      "issues": [
+        {
+          "title": "POST /api/initialize-prompts — executes without authentication",
+          "severity": "P1",
+          "phase": "api",
+          "category": "auth",
+          "reproSteps": [
+            "Send POST /api/initialize-prompts with no session cookie",
+            "Observe successful response"
+          ],
+          "expected": "401 Unauthorized in production",
+          "actual": "200 — route executes for unauthenticated caller",
+          "timestamp": "2026-03-23T14:06:14.020Z"
+        },
+        {
+          "title": "POST /api/ai-providers/refresh — executes without authentication",
+          "severity": "P1",
+          "phase": "api",
+          "category": "auth",
+          "reproSteps": [
+            "Send POST /api/ai-providers/refresh with no session cookie",
+            "Observe successful response"
+          ],
+          "expected": "401 Unauthorized in production",
+          "actual": "200 — route executes for unauthenticated caller",
+          "timestamp": "2026-03-23T14:06:14.022Z"
+        }
+      ],
+      "passCount": 6,
+      "failCount": 2,
+      "durationMs": 32
+    },
+    {
+      "auditor": "fileUploadTester",
+      "phase": "api",
+      "issues": [
+        {
+          "title": "POST /api/upload — .exe file causes 500 instead of 400",
+          "severity": "P2",
+          "phase": "api",
+          "category": "error-handling",
+          "reproSteps": [
+            "POST /api/upload with .exe file"
+          ],
+          "expected": "400 Bad Request",
+          "actual": "500: {\"message\":\"Unsupported file type\"}",
+          "timestamp": "2026-03-23T14:06:14.394Z"
+        },
+        {
+          "title": "POST /api/upload — oversized file causes 500 instead of 400",
+          "severity": "P2",
+          "phase": "api",
+          "category": "error-handling",
+          "reproSteps": [
+            "POST /api/upload with 11MB file"
+          ],
+          "expected": "400 Bad Request",
+          "actual": "500: {\"message\":\"File too large\"}",
+          "timestamp": "2026-03-23T14:06:14.770Z"
+        }
+      ],
+      "passCount": 7,
+      "failCount": 2,
+      "durationMs": 729
+    }
+  ],
+  "totalIssues": 10,
+  "bySeverity": {
+    "P0": 0,
+    "P1": 7,
+    "P2": 3,
+    "P3": 0
+  }
+}

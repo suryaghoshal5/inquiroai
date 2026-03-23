@@ -11,6 +11,7 @@ export interface User {
 export interface Chat {
   id: number;
   userId: string;
+  projectId?: number | null;
   title: string;
   role: string;
   customRole?: string | null;
@@ -24,6 +25,11 @@ export interface Chat {
   aiProvider: string;
   aiModel: string;
   configuration?: any;
+  compressionCount?: number | null;
+  totalTokensUsed?: number | null;
+  totalCostUsd?: number | null;
+  notionPageId?: string | null;
+  archivedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
   lastMessage?: string | null;
@@ -65,9 +71,39 @@ export interface ChatConfig {
   examples: string;
   optional: string;
   audience: string;
-  aiProvider: "openai" | "gemini" | "claude" | "grok";
+  aiProvider: string;
   aiModel: string;
   title?: string;
+}
+
+export interface Project {
+  id: number;
+  userId: string;
+  name: string;
+  description?: string | null;
+  role?: string | null;
+  customRole?: string | null;
+  context?: string | null;
+  constraints?: string | null;
+  audience?: string | null;
+  examples?: string | null;
+  optional?: string | null;
+  aiProvider?: string | null;
+  aiModel?: string | null;
+  localFolderPath?: string | null;
+  configuration?: unknown;
+  isArchived: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  chats?: Chat[];
+}
+
+export interface ProjectFile {
+  name: string;
+  relativePath: string;
+  size: number;
+  extension: string;
+  modifiedAt: string;
 }
 
 export interface RoleOption {

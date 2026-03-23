@@ -11,19 +11,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import RoleSelector from "./RoleSelector";
 import FileUpload from "./FileUpload";
-import { 
-  Info, 
-  CheckCircle, 
-  ListTodo, 
-  Database, 
-  AlertTriangle, 
-  Lightbulb, 
-  Star, 
-  Users, 
+import {
+  Info,
+  CheckCircle,
+  ListTodo,
+  Database,
+  AlertTriangle,
+  Lightbulb,
+  Star,
+  Users,
   Bot,
   UserCheck,
   Rocket,
-  RefreshCw
+  RefreshCw,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import type { ChatConfig, AIProvider } from "@/types";
 import { apiRequest } from "@/lib/queryClient";
@@ -56,6 +58,7 @@ interface NewChatFormProps {
 
 export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
   const [selectedProvider, setSelectedProvider] = useState<string>("openai");
+  const [taskItems, setTaskItems] = useState<string[]>([""]);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -124,6 +127,27 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
 
   const handleSubmit = (data: ChatConfig) => {
     onSubmit(data);
+  };
+
+  const syncTasks = (items: string[]) => {
+    setTaskItems(items);
+    const combined = items
+      .map((t, i) => `${i + 1}. ${t}`)
+      .filter(t => t.trim() !== `${t.indexOf('.') + 1}. `)
+      .join("\n");
+    form.setValue("task", combined);
+  };
+
+  const addTask = () => syncTasks([...taskItems, ""]);
+
+  const updateTask = (index: number, value: string) => {
+    const updated = taskItems.map((t, i) => (i === index ? value : t));
+    syncTasks(updated);
+  };
+
+  const removeTask = (index: number) => {
+    if (taskItems.length === 1) return; // keep at least one row
+    syncTasks(taskItems.filter((_, i) => i !== index));
   };
 
   const handleFileUpload = (content: string, fieldName: 'inputData' | 'examples') => {
@@ -289,28 +313,56 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
         {/* Task */}
         <Card>
           <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-3">
+              <FormLabel className="text-sm font-semibold text-gray-900 flex items-center mb-0">
+                <ListTodo className="w-4 h-4 mr-2 text-blue-600" />
+                Task <span className="text-gray-500 font-normal ml-1">(10,000 words max)</span>
+              </FormLabel>
+              <span className={`text-sm ${getWordCount("task") > 9000 ? "text-red-500" : "text-gray-400"}`}>
+                {getWordCount("task")} / 10,000 words
+              </span>
+            </div>
+            <div className="space-y-2">
+              {taskItems.map((item, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-400 w-6 shrink-0 text-right">
+                    {index + 1}.
+                  </span>
+                  <Input
+                    value={item}
+                    onChange={(e) => updateTask(index, e.target.value)}
+                    placeholder={`Task ${index + 1}`}
+                    className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); addTask(); }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeTask(index)}
+                    disabled={taskItems.length === 1}
+                    className="p-1.5 text-gray-300 hover:text-red-400 disabled:opacity-20 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={addTask}
+              className="mt-3 flex items-center gap-1.5 text-sm text-blue-500 hover:text-blue-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add task
+            </button>
+            {/* Hidden field to carry the combined value for react-hook-form validation */}
             <FormField
               control={form.control}
               name="task"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm font-semibold text-gray-900 flex items-center">
-                    <ListTodo className="w-4 h-4 mr-2 text-blue-600" />
-                    Task <span className="text-gray-500 font-normal ml-1">(10,000 words max)</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="• Define specific tasks (use bullet points)"
-                      {...field}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </FormControl>
-                  <div className="flex justify-between items-center mt-2">
-                    <FormMessage />
-                    <span className={`text-sm ${getWordCount("task") > 9000 ? "text-red-500" : "text-gray-400"}`}>
-                      {getWordCount("task")} / 10,000 words
-                    </span>
-                  </div>
+              render={() => (
+                <FormItem className="mt-1">
+                  <FormMessage />
                 </FormItem>
               )}
             />
