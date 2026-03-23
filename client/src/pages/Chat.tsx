@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,13 +11,40 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Brain } from "lucide-react";
 import type { Chat, Message } from "@/types";
 
+export interface EvaluationData {
+  score: number;
+  issues: string[];
+  improved_prompt: string;
+  prompt_type: string;
+  complexity: string;
+  show_suggestion: boolean;
+}
+
+export interface RecommendationData {
+  model: string;
+  display_name: string;
+  reasoning: string;
+  estimated_cost_per_1k_tokens: number;
+}
+
+export interface ContextStatus {
+  current_tokens: number;
+  limit_tokens: number;
+  compression_count: number;
+  was_compressed: boolean;
+}
+
 export default function ChatPage() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
-
+  const [lastEvaluation, setLastEvaluation] = useState<EvaluationData | null>(null);
+  const [lastRecommendation, setLastRecommendation] = useState<RecommendationData | null>(null);
+  const [modelOverride, setModelOverride] = useState<string | null>(null);
+  const [contextStatus, setContextStatus] = useState<ContextStatus | null>(null);
+  const autoArchiveTriggered = useRef(false);
 
   const chatId = parseInt(id || "0");
 
@@ -52,10 +79,18 @@ export default function ChatPage() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
-      const response = await apiRequest("POST", `/api/chats/${chatId}/messages`, { content });
+      const body: { content: string; modelOverride?: string } = { content };
+      if (modelOverride) body.modelOverride = modelOverride;
+      const response = await apiRequest("POST", `/api/chats/${chatId}/messages`, body);
       return response.json();
     },
-    onSuccess: (newMessage) => {
+    onSuccess: (data) => {
+      // Store evaluation + recommendation for the banner
+      if (data.evaluation) setLastEvaluation(data.evaluation);
+      if (data.recommendation) setLastRecommendation(data.recommendation);
+      if (data.context_status) setContextStatus(data.context_status);
+      // Clear override after use
+      setModelOverride(null);
       // Invalidate chat messages to refetch
       queryClient.invalidateQueries({ queryKey: [`/api/chats/${chatId}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/chats"] });
@@ -97,7 +132,49 @@ export default function ChatPage() {
     },
   });
 
+  const archiveMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/chats/${chatId}/archive`, {});
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/chats/${chatId}`] });
+      toast({
+        title: "Archived to Memory",
+        description: `"${data.title}" saved to Notion${data.type ? ` · ${data.type}` : ""}`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Archive failed",
+        description: "Could not archive to Notion. Check NOTION_API_KEY in settings.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Auto-archive: when user navigates away from a chat with >5 messages that hasn't been archived
+  useEffect(() => {
+    return () => {
+      const chat = (chatData as any)?.chat;
+      const messages = (chatData as any)?.messages;
+      if (
+        !autoArchiveTriggered.current &&
+        chat &&
+        !chat.archivedAt &&
+        messages &&
+        messages.length > 5
+      ) {
+        autoArchiveTriggered.current = true;
+        // Fire-and-forget — don't block navigation
+        apiRequest("POST", `/api/chats/${chatId}/archive`, {}).catch(() => {});
+      }
+    };
+  }, [chatId, chatData]);
+
   const handleSendMessage = (content: string) => {
+    setLastEvaluation(null);
+    setLastRecommendation(null);
     sendMessageMutation.mutate(content);
   };
 
@@ -173,7 +250,13 @@ export default function ChatPage() {
         messages={chatData.messages}
         onSendMessage={handleSendMessage}
         isLoading={sendMessageMutation.isPending}
-
+        lastEvaluation={lastEvaluation}
+        lastRecommendation={lastRecommendation}
+        onModelOverride={setModelOverride}
+        currentModelOverride={modelOverride}
+        contextStatus={contextStatus}
+        onArchive={() => archiveMutation.mutate()}
+        isArchiving={archiveMutation.isPending}
       />
     </div>
   );

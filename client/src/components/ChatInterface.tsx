@@ -5,42 +5,72 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { 
-  Share, 
-  Settings, 
-  Copy, 
-  ThumbsUp, 
-  ThumbsDown, 
+import { Badge } from "@/components/ui/badge";
+import {
+  Share,
+  Settings,
+  Copy,
+  ThumbsUp,
+  ThumbsDown,
   Paperclip,
   Send,
   MoreHorizontal,
   Download,
   FileText,
-  File
+  File,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+  X,
+  Cpu,
+  Link2,
+  Bookmark,
+  BookmarkCheck,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import LinkToProjectModal from "@/components/LinkToProjectModal";
 import type { Chat, Message } from "@/types";
+import type { EvaluationData, RecommendationData, ContextStatus } from "@/pages/Chat";
 
 interface ChatInterfaceProps {
   chat: Chat;
   messages: Message[];
   onSendMessage: (content: string) => void;
   isLoading: boolean;
+  lastEvaluation?: EvaluationData | null;
+  lastRecommendation?: RecommendationData | null;
+  onModelOverride?: (model: string | null) => void;
+  currentModelOverride?: string | null;
+  contextStatus?: ContextStatus | null;
+  onArchive?: () => void;
+  isArchiving?: boolean;
 }
 
-export default function ChatInterface({ 
-  chat, 
-  messages, 
-  onSendMessage, 
-  isLoading
+export default function ChatInterface({
+  chat,
+  messages,
+  onSendMessage,
+  isLoading,
+  lastEvaluation,
+  lastRecommendation,
+  onModelOverride,
+  currentModelOverride,
+  contextStatus,
+  onArchive,
+  isArchiving,
 }: ChatInterfaceProps) {
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [bannerVisible, setBannerVisible] = useState(false);
+  const [bannerExpanded, setBannerExpanded] = useState(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const bannerDismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -66,12 +96,54 @@ export default function ChatInterface({
     }
   }, [isTyping]);
 
+  // Show banner when evaluation arrives and score < 7
+  useEffect(() => {
+    if (lastEvaluation?.show_suggestion) {
+      setBannerVisible(true);
+      setBannerExpanded(false);
+      if (bannerDismissTimer.current) clearTimeout(bannerDismissTimer.current);
+      bannerDismissTimer.current = setTimeout(() => {
+        setBannerVisible(false);
+      }, 8000);
+    } else {
+      setBannerVisible(false);
+    }
+    return () => {
+      if (bannerDismissTimer.current) clearTimeout(bannerDismissTimer.current);
+    };
+  }, [lastEvaluation]);
+
   const handleSend = () => {
     if (!inputMessage.trim() || isLoading) return;
-    
+    setBannerVisible(false);
     onSendMessage(inputMessage.trim());
     setInputMessage("");
     setIsTyping(false);
+  };
+
+  const dismissBanner = () => {
+    setBannerVisible(false);
+    if (bannerDismissTimer.current) clearTimeout(bannerDismissTimer.current);
+  };
+
+  const useImprovedPrompt = () => {
+    if (lastEvaluation?.improved_prompt) {
+      setInputMessage(lastEvaluation.improved_prompt);
+    }
+    dismissBanner();
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 8) return "text-green-600";
+    if (score >= 6) return "text-yellow-600";
+    return "text-red-500";
+  };
+
+  const getContextBarColor = (pct: number) => {
+    if (pct < 0.5)  return { bar: "bg-green-500",  text: "text-green-700"  };
+    if (pct < 0.7)  return { bar: "bg-yellow-500", text: "text-yellow-700" };
+    if (pct < 0.85) return { bar: "bg-orange-500", text: "text-orange-700" };
+    return           { bar: "bg-red-500",    text: "text-red-700"   };
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -279,12 +351,48 @@ export default function ChatInterface({
               </DialogContent>
             </Dialog>
             
+            <Button
+              variant="ghost"
+              size="sm"
+              title={chat.projectId ? "Move to another project" : "Link to project"}
+              onClick={() => setShowLinkModal(true)}
+              className="flex items-center gap-1.5 text-gray-500 hover:text-blue-600"
+            >
+              <Link2 className="w-4 h-4" />
+            </Button>
+
+            {onArchive && (
+              <Button
+                variant="ghost"
+                size="sm"
+                title={chat.archivedAt ? "Already archived to Notion" : "Archive to Memory (Notion)"}
+                onClick={onArchive}
+                disabled={isArchiving}
+                className={`flex items-center gap-1.5 ${chat.archivedAt ? "text-green-600" : "text-gray-500 hover:text-purple-600"}`}
+              >
+                {chat.archivedAt ? (
+                  <BookmarkCheck className="w-4 h-4" />
+                ) : (
+                  <Bookmark className={`w-4 h-4 ${isArchiving ? "animate-pulse" : ""}`} />
+                )}
+              </Button>
+            )}
+
             <Button variant="ghost" size="sm">
               <MoreHorizontal className="w-4 h-4 text-gray-500" />
             </Button>
           </div>
         </div>
       </div>
+
+      {/* Link to project modal */}
+      <LinkToProjectModal
+        chatId={chat.id}
+        chatTitle={chat.title}
+        currentProjectId={chat.projectId}
+        open={showLinkModal}
+        onClose={() => setShowLinkModal(false)}
+      />
 
       {/* Messages Area */}
       <ScrollArea className="flex-1 p-6">
@@ -304,19 +412,55 @@ export default function ChatInterface({
                 >
                   <div className="text-sm leading-relaxed">
                     {message.role === 'assistant' ? (
-                      <ReactMarkdown 
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
                         components={{
-                          h1: ({children}) => <h1 className="text-lg font-bold text-gray-900 mb-2">{children}</h1>,
-                          h2: ({children}) => <h2 className="text-md font-semibold text-gray-900 mb-2">{children}</h2>,
-                          h3: ({children}) => <h3 className="text-sm font-medium text-gray-900 mb-1">{children}</h3>,
-                          p: ({children}) => <p className="text-gray-700 mb-2 last:mb-0">{children}</p>,
-                          ul: ({children}) => <ul className="list-disc pl-4 mb-2 text-gray-700">{children}</ul>,
-                          ol: ({children}) => <ol className="list-decimal pl-4 mb-2 text-gray-700">{children}</ol>,
-                          li: ({children}) => <li className="text-gray-700 mb-1">{children}</li>,
-                          code: ({children}) => <code className="bg-blue-50 text-blue-600 px-1 py-0.5 rounded text-xs font-mono">{children}</code>,
-                          pre: ({children}) => <pre className="bg-gray-100 p-3 rounded-lg overflow-x-auto mb-2">{children}</pre>,
+                          h1: ({children}) => <h1 className="text-xl font-bold text-gray-900 mt-4 mb-2 first:mt-0 border-b border-gray-200 pb-1">{children}</h1>,
+                          h2: ({children}) => <h2 className="text-lg font-semibold text-gray-900 mt-4 mb-2 first:mt-0">{children}</h2>,
+                          h3: ({children}) => <h3 className="text-base font-semibold text-gray-900 mt-3 mb-1 first:mt-0">{children}</h3>,
+                          h4: ({children}) => <h4 className="text-sm font-semibold text-gray-800 mt-2 mb-1">{children}</h4>,
+                          p: ({children}) => <p className="text-gray-700 mb-3 last:mb-0 leading-relaxed">{children}</p>,
+                          ul: ({children}) => <ul className="list-disc pl-5 mb-3 text-gray-700 space-y-1">{children}</ul>,
+                          ol: ({children}) => <ol className="list-decimal pl-5 mb-3 text-gray-700 space-y-1">{children}</ol>,
+                          li: ({children}) => <li className="text-gray-700 leading-relaxed">{children}</li>,
+                          code: ({className, children, ...props}) => {
+                            const isBlock = !!(props as any).node?.position;
+                            // If it has a language class it's inside a pre (block); otherwise inline
+                            const isInline = !className;
+                            return isInline
+                              ? <code className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-xs font-mono border border-blue-100">{children}</code>
+                              : <code className={`font-mono text-xs text-gray-800 ${className ?? ''}`}>{children}</code>;
+                          },
+                          pre: ({children}) => (
+                            <pre className="bg-gray-900 text-gray-100 p-4 rounded-xl overflow-x-auto mb-3 text-xs font-mono leading-relaxed border border-gray-700">
+                              {children}
+                            </pre>
+                          ),
+                          blockquote: ({children}) => (
+                            <blockquote className="border-l-4 border-blue-400 pl-4 py-1 my-3 bg-blue-50 rounded-r-lg text-gray-600 italic">
+                              {children}
+                            </blockquote>
+                          ),
                           strong: ({children}) => <strong className="font-semibold text-gray-900">{children}</strong>,
-                          em: ({children}) => <em className="italic text-gray-700">{children}</em>
+                          em: ({children}) => <em className="italic text-gray-700">{children}</em>,
+                          hr: () => <hr className="border-gray-200 my-4" />,
+                          a: ({href, children}) => (
+                            <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">
+                              {children}
+                            </a>
+                          ),
+                          table: ({children}) => (
+                            <div className="overflow-x-auto mb-3">
+                              <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg text-xs">
+                                {children}
+                              </table>
+                            </div>
+                          ),
+                          thead: ({children}) => <thead className="bg-gray-50">{children}</thead>,
+                          tbody: ({children}) => <tbody className="divide-y divide-gray-100">{children}</tbody>,
+                          tr: ({children}) => <tr className="hover:bg-gray-50">{children}</tr>,
+                          th: ({children}) => <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">{children}</th>,
+                          td: ({children}) => <td className="px-3 py-2 text-gray-700">{children}</td>,
                         }}
                       >
                         {message.content}
@@ -392,6 +536,163 @@ export default function ChatInterface({
       {/* Input Area */}
       <div className="bg-white border-t border-gray-200 p-6">
         <div className="max-w-4xl mx-auto">
+
+          {/* Context Status Bar */}
+          {contextStatus && contextStatus.limit_tokens > 0 && (() => {
+            const pct = contextStatus.current_tokens / contextStatus.limit_tokens;
+            const colors = getContextBarColor(pct);
+            const barWidth = `${Math.min(pct * 100, 100).toFixed(1)}%`;
+            return (
+              <div className="mb-2 flex items-center gap-3 text-xs">
+                <div className="flex-1">
+                  <div className="h-1.5 w-full rounded-full bg-gray-200">
+                    <div
+                      className={`h-1.5 rounded-full transition-all duration-500 ${colors.bar}`}
+                      style={{ width: barWidth }}
+                    />
+                  </div>
+                </div>
+                <span className={`shrink-0 font-medium ${colors.text}`}>
+                  {(pct * 100).toFixed(0)}% of context used
+                </span>
+                {contextStatus.compression_count > 0 && (
+                  <span className="shrink-0 text-gray-400">
+                    · Compressed {contextStatus.compression_count}×
+                  </span>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Prompt Suggestion Banner */}
+          {bannerVisible && lastEvaluation && (
+            <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span className="font-medium text-amber-800">
+                    Prompt score:{" "}
+                    <span className={getScoreColor(lastEvaluation.score)}>
+                      {lastEvaluation.score}/10
+                    </span>
+                    {" "}— Suggestion available
+                  </span>
+                  {lastRecommendation && (
+                    <Badge variant="outline" className="text-xs border-amber-300 text-amber-700 flex items-center gap-1">
+                      <Cpu className="w-3 h-3" />
+                      {lastRecommendation.display_name}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-amber-700 hover:text-amber-900"
+                    onClick={() => setBannerExpanded(v => !v)}
+                  >
+                    {bannerExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-amber-700 hover:text-amber-900"
+                    onClick={dismissBanner}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+
+              {bannerExpanded && (
+                <div className="mt-3 space-y-3">
+                  {lastEvaluation.issues.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-amber-700 mb-1">Issues:</p>
+                      <ul className="list-disc pl-4 space-y-0.5">
+                        {lastEvaluation.issues.map((issue, i) => (
+                          <li key={i} className="text-xs text-amber-800">{issue}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <div className="rounded-lg bg-white border border-amber-200 p-2.5">
+                    <p className="text-xs font-medium text-amber-700 mb-1">Suggested prompt:</p>
+                    <p className="text-xs text-gray-700 whitespace-pre-wrap">{lastEvaluation.improved_prompt}</p>
+                  </div>
+                  {lastRecommendation && (
+                    <div className="rounded-lg bg-white border border-amber-200 p-2.5">
+                      <p className="text-xs font-medium text-amber-700 mb-1">Recommended model for next message:</p>
+                      <p className="text-xs text-gray-700">
+                        <span className="font-medium">{lastRecommendation.display_name}</span>
+                        {" — "}{lastRecommendation.reasoning}
+                        <span className="text-gray-400 ml-1">
+                          (~${(lastRecommendation.estimated_cost_per_1k_tokens * 1000).toFixed(2)}/1K tokens)
+                        </span>
+                      </p>
+                      {onModelOverride && (
+                        <div className="mt-2 flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 text-xs border-amber-300 text-amber-700 hover:bg-amber-100"
+                            onClick={() => {
+                              onModelOverride(lastRecommendation.model);
+                              toast({ title: "Model override set", description: `Next message will use ${lastRecommendation.display_name}` });
+                              dismissBanner();
+                            }}
+                          >
+                            Use {lastRecommendation.display_name}
+                          </Button>
+                          {currentModelOverride && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 text-xs text-gray-500"
+                              onClick={() => { onModelOverride(null); dismissBanner(); }}
+                            >
+                              Clear override
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white"
+                      onClick={useImprovedPrompt}
+                    >
+                      Use suggested prompt
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={dismissBanner}
+                    >
+                      Keep mine
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Model override indicator */}
+          {currentModelOverride && (
+            <div className="mb-2 flex items-center gap-2 text-xs text-blue-600">
+              <Cpu className="w-3 h-3" />
+              <span>Next message will use: <span className="font-medium">{currentModelOverride}</span></span>
+              {onModelOverride && (
+                <button onClick={() => onModelOverride(null)} className="text-gray-400 hover:text-gray-600">
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="flex items-end space-x-4">
             <div className="flex-1">
               <div className="relative">

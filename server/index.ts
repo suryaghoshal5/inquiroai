@@ -56,15 +56,12 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
+  // Port 5000 is reserved by macOS AirPlay locally — allow override via PORT env var
+  const port = parseInt(process.env.PORT || "5000");
+  const listenOpts: Record<string, unknown> = { port, host: "0.0.0.0" };
+  // reusePort is Linux-only; skip on macOS to avoid ENOTSUP
+  if (process.platform === "linux") listenOpts.reusePort = true;
+  server.listen(listenOpts, () => {
     log(`serving on port ${port}`);
   });
 })();

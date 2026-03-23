@@ -6,8 +6,16 @@ import { AIOrchestrator, AI_PROVIDERS } from "./services/aiOrchestrator";
 import { PromptService } from "./services/promptService";
 import { FileProcessor } from "./services/fileProcessor";
 import { CryptoService } from "./services/cryptoService";
-import { chatConfigSchema, insertMessageSchema, insertApiKeySchema } from "@shared/schema";
+import { chatConfigSchema, insertMessageSchema, insertApiKeySchema, promptIntelligence, projects, chats, projectConfigSchema } from "@shared/schema";
+import { evaluatePrompt } from "./promptEvaluator";
+import { recommendModel } from "./modelRouter";
+import { manageContext, estimateMessagesTokens, estimateTokens } from "./contextManager";
+import { classifyAndArchiveChat } from "./notionMemory";
+import { db } from "./db";
+import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
+import fs from "fs/promises";
+import path from "path";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // In development mode, bypass authentication and use mock user
@@ -103,30 +111,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Try to generate initial AI response, but don't fail chat creation if it fails
       try {
-        // Check if user has API key for the selected provider
-        const apiKey = await storage.getApiKey(userId, config.aiProvider);
-        if (apiKey) {
-          console.log("Generating initial AI response for chat", chat.id);
-          const aiResponse = await AIOrchestrator.generateResponse(
-            userId,
-            config.aiProvider,
-            config.aiModel,
-            fullPrompt,
-            []
-          );
-          
-          console.log("AI response generated successfully, saving to database");
-          // Save the AI's initial response
-          await storage.createMessage({
-            chatId: chat.id,
-            role: "assistant",
-            content: aiResponse,
-            metadata: { provider: config.aiProvider, model: config.aiModel }
-          });
-          console.log("Initial AI response saved successfully");
-        } else {
-          console.log("No API key found for provider", config.aiProvider, "- skipping initial AI response");
-        }
+        console.log("Generating initial AI response for chat", chat.id);
+        const aiResponse = await AIOrchestrator.generateResponse(
+          userId,
+          config.aiProvider,
+          config.aiModel,
+          fullPrompt,
+          []
+        );
+
+        console.log("AI response generated successfully, saving to database");
+        await storage.createMessage({
+          chatId: chat.id,
+          role: "assistant",
+          content: aiResponse,
+          metadata: { provider: config.aiProvider, model: config.aiModel }
+        });
+        console.log("Initial AI response saved successfully");
       } catch (error) {
         console.error("Error generating initial AI response:", error);
         // Continue without initial response - user can still chat
@@ -203,55 +204,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const chatId = parseInt(req.params.id);
-      const { content } = req.body;
-      
+      const { content, modelOverride } = req.body;
+
       console.log(`Message request - User: ${userId}, Chat: ${chatId}, Content: ${content?.substring(0, 100)}...`);
-      
+
       if (!content || typeof content !== 'string') {
         return res.status(400).json({ message: "Message content is required" });
       }
-      
+
       const chat = await storage.getChat(chatId);
       if (!chat || chat.userId !== userId) {
         console.log(`Chat not found or unauthorized - Chat: ${chat ? 'exists' : 'not found'}, User match: ${chat?.userId === userId}`);
         return res.status(404).json({ message: "Chat not found" });
       }
-      
+
       console.log(`Chat found - Provider: ${chat.aiProvider}, Model: ${chat.aiModel}`);
-      
-      // Save user message
-      await storage.createMessage({
-        chatId,
-        role: "user",
-        content
-      });
-      
-      // Check if user has API key for this provider
-      const apiKey = await storage.getApiKey(userId, chat.aiProvider);
-      if (!apiKey) {
-        console.log(`No API key found for user ${userId} and provider ${chat.aiProvider}`);
-        return res.status(400).json({ 
-          message: `No API key found for ${chat.aiProvider}. Please add your API key in settings.`,
-          requiresApiKey: true,
-          provider: chat.aiProvider
-        });
-      }
-      
-      if (!apiKey.isValid) {
-        console.log(`Invalid API key for user ${userId} and provider ${chat.aiProvider}`);
-        return res.status(400).json({ 
-          message: `API key for ${chat.aiProvider} is invalid. Please update your API key in settings.`,
-          requiresApiKey: true,
-          provider: chat.aiProvider
-        });
-      }
-      
-      console.log(`API key found and valid for provider ${chat.aiProvider}`);
-      
+
+      // --- Layer 2: Prompt Intelligence Pipeline ---
+      // Run evaluation in parallel with saving the user message (non-blocking)
+      const [userMessage, evaluation] = await Promise.all([
+        storage.createMessage({ chatId, role: "user", content }),
+        evaluatePrompt(content),
+      ]);
+
+      const recommendation = recommendModel(evaluation.prompt_type, evaluation.complexity);
+
+      // Determine model to use: explicit override > router recommendation > chat default
+      const modelToUse = modelOverride || recommendation.model;
+      console.log(`Prompt score: ${evaluation.score}, recommended: ${recommendation.model}, using: ${modelToUse}`);
+      // --- End Layer 2 setup ---
+
+      // OpenRouter handles all AI routing — no per-provider API key required.
+      console.log(`Using OpenRouter for provider ${chat.aiProvider}`);
+
       // Get chat history for context
-      const messages = await storage.getChatMessages(chatId);
-      const context = messages.slice(-10).map(msg => msg.content); // Last 10 messages
-      
+      const chatMessages = await storage.getChatMessages(chatId);
+
       // Generate system prompt from chat configuration
       const chatConfig = {
         role: chat.role as "custom" | "researcher" | "product_manager" | "developer" | "content_writer" | "designer",
@@ -264,43 +252,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
         optional: chat.optional || "",
         audience: chat.audience || "",
         aiProvider: chat.aiProvider as "openai" | "gemini" | "claude" | "grok",
-        aiModel: chat.aiModel,
+        aiModel: modelToUse,
         title: chat.title
       };
-      
-      console.log(`Generating system prompt and AI response...`);
-      
+
       const systemPrompt = await PromptService.generatePrompt(chatConfig);
+
+      // --- Layer 3: Context Manager ---
+      const rawMessages = chatMessages.map(m => ({
+        role: m.role as 'user' | 'assistant' | 'system',
+        content: m.content,
+      }));
+
+      const contextResult = await manageContext(
+        rawMessages,
+        modelToUse,
+        systemPrompt,
+        chat.compressionCount ?? 0
+      );
+
+      console.log(`Context: ${contextResult.current_tokens}/${contextResult.limit_tokens} tokens, compressed: ${contextResult.was_compressed}`);
+
+      const context = contextResult.messages.map(m => m.content);
+      // --- End Layer 3 ---
+
+      console.log(`Generating system prompt and AI response...`);
+
       const aiResponse = await AIOrchestrator.generateResponse(
         userId,
         chat.aiProvider,
-        chat.aiModel,
+        modelToUse,
         systemPrompt,
         context
       );
-      
+
       console.log(`AI response generated successfully, length: ${aiResponse.length}`);
-      
+
       // Save AI response
       const aiMessage = await storage.createMessage({
         chatId,
         role: "assistant",
         content: aiResponse,
-        metadata: { provider: chat.aiProvider, model: chat.aiModel }
+        metadata: { provider: chat.aiProvider, model: modelToUse }
       });
-      
-      // Update chat timestamp
-      await storage.updateChat(chatId, { updatedAt: new Date() });
-      
-      res.json(aiMessage);
-    } catch (error) {
+
+      // Update chat: timestamp + compression count + token usage
+      const tokenDelta = estimateTokens(content) + estimateTokens(aiResponse);
+      await storage.updateChat(chatId, {
+        updatedAt: new Date(),
+        compressionCount: contextResult.compression_count,
+        totalTokensUsed: (chat.totalTokensUsed ?? 0) + tokenDelta,
+      });
+
+      // Persist prompt intelligence record (fire-and-forget — never block response)
+      db.insert(promptIntelligence).values({
+        messageId: userMessage.id,
+        chatId,
+        userId,
+        originalPrompt: content,
+        improvedPrompt: evaluation.improved_prompt,
+        promptType: evaluation.prompt_type,
+        complexity: evaluation.complexity,
+        score: evaluation.score,
+        modelRecommended: recommendation.model,
+        modelUsed: modelToUse,
+        userAcceptedSuggestion: modelOverride ? true : null,
+      }).catch(err => console.warn('Failed to save prompt intelligence record:', err));
+
+      res.json({
+        ...aiMessage,
+        evaluation: {
+          score: evaluation.score,
+          issues: evaluation.issues,
+          improved_prompt: evaluation.improved_prompt,
+          prompt_type: evaluation.prompt_type,
+          complexity: evaluation.complexity,
+          show_suggestion: evaluation.show_suggestion,
+        },
+        recommendation: {
+          model: recommendation.model,
+          display_name: recommendation.display_name,
+          reasoning: recommendation.reasoning,
+          estimated_cost_per_1k_tokens: recommendation.estimated_cost_per_1k_tokens,
+        },
+        model_used: modelToUse,
+        context_status: {
+          current_tokens: contextResult.current_tokens,
+          limit_tokens: contextResult.limit_tokens,
+          compression_count: contextResult.compression_count,
+          was_compressed: contextResult.was_compressed,
+        },
+      });
+    } catch (error: any) {
       console.error("Error sending message:", error);
       console.error("Error details:", {
         message: error.message,
         stack: error.stack,
         name: error.name
       });
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to send message",
         error: error.message
       });
@@ -322,6 +372,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting chat:", error);
       res.status(500).json({ message: "Failed to delete chat" });
+    }
+  });
+
+  // PATCH /api/chats/:id — update chat metadata (e.g. link/unlink project)
+  app.patch('/api/chats/:id', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const chatId = parseInt(req.params.id);
+
+      const chat = await storage.getChat(chatId);
+      if (!chat || chat.userId !== userId) {
+        return res.status(404).json({ message: "Chat not found" });
+      }
+
+      const allowedFields = ['projectId', 'title'] as const;
+      const updates: Record<string, unknown> = {};
+      for (const field of allowedFields) {
+        if (field in req.body) updates[field] = req.body[field];
+      }
+
+      // Validate projectId if provided — must belong to same user or be null
+      if ('projectId' in updates && updates.projectId !== null) {
+        const [proj] = await db.select().from(projects)
+          .where(and(eq(projects.id, updates.projectId as number), eq(projects.userId, userId)));
+        if (!proj) return res.status(400).json({ message: "Project not found or not yours" });
+      }
+
+      const [updated] = await db.update(chats)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
+        .returning();
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating chat:", error);
+      res.status(500).json({ message: "Failed to update chat" });
     }
   });
 
@@ -458,6 +544,350 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch role prompts" });
     }
   });
+
+  // ─── Layer 0: Project routes ──────────────────────────────────────────────
+
+  // POST /api/projects — create project
+  app.post('/api/projects', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      // Strip surrounding shell quotes from localFolderPath before validation
+      if (req.body.localFolderPath) {
+        req.body.localFolderPath = req.body.localFolderPath.trim().replace(/^(['"])(.*)\1$/, "$2").trim();
+      }
+
+      const parsed = projectConfigSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Invalid project data", errors: parsed.error.errors });
+
+      const { localFolderPath } = parsed.data;
+      if (localFolderPath) {
+        try {
+          await fs.access(localFolderPath, fs.constants.R_OK);
+        } catch {
+          return res.status(400).json({ message: `Local folder path is not accessible: "${localFolderPath}". Ensure the path exists and is readable.` });
+        }
+      }
+
+      const [project] = await db.insert(projects).values({ ...parsed.data, userId }).returning();
+      res.status(201).json(project);
+    } catch (error) {
+      console.error("Error creating project:", error);
+      res.status(500).json({ message: "Failed to create project" });
+    }
+  });
+
+  // GET /api/projects — list user projects (with chat counts)
+  app.get('/api/projects', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userProjects = await db.select().from(projects)
+        .where(and(eq(projects.userId, userId), eq(projects.isArchived, false)))
+        .orderBy(desc(projects.updatedAt));
+
+      // Attach chats for each project
+      const projectsWithChats = await Promise.all(userProjects.map(async (proj) => {
+        const projectChats = await db.select().from(chats)
+          .where(eq(chats.projectId, proj.id))
+          .orderBy(desc(chats.updatedAt));
+        return { ...proj, chats: projectChats };
+      }));
+
+      res.json(projectsWithChats);
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+      res.status(500).json({ message: "Failed to fetch projects" });
+    }
+  });
+
+  // GET /api/projects/:id — get single project with chats
+  app.get('/api/projects/:id', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const projectId = parseInt(req.params.id);
+      const [project] = await db.select().from(projects)
+        .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+      if (!project) return res.status(404).json({ message: "Project not found" });
+
+      const projectChats = await db.select().from(chats)
+        .where(eq(chats.projectId, projectId))
+        .orderBy(desc(chats.updatedAt));
+
+      res.json({ ...project, chats: projectChats });
+    } catch (error) {
+      console.error("Error fetching project:", error);
+      res.status(500).json({ message: "Failed to fetch project" });
+    }
+  });
+
+  // PATCH /api/projects/:id — update project
+  app.patch('/api/projects/:id', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const projectId = parseInt(req.params.id);
+      const [existing] = await db.select().from(projects)
+        .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+      if (!existing) return res.status(404).json({ message: "Project not found" });
+
+      // Strip surrounding shell quotes from localFolderPath before validation
+      if (req.body.localFolderPath) {
+        req.body.localFolderPath = req.body.localFolderPath.trim().replace(/^(['"])(.*)\1$/, "$2").trim();
+      }
+
+      const parsed = projectConfigSchema.partial().safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+
+      const { localFolderPath } = parsed.data;
+      if (localFolderPath) {
+        try {
+          await fs.access(localFolderPath, fs.constants.R_OK);
+        } catch {
+          return res.status(400).json({ message: `Local folder path is not accessible: "${localFolderPath}". Ensure the path exists and is readable.` });
+        }
+      }
+
+      const [updated] = await db.update(projects)
+        .set({ ...parsed.data, updatedAt: new Date() })
+        .where(eq(projects.id, projectId))
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating project:", error);
+      res.status(500).json({ message: "Failed to update project" });
+    }
+  });
+
+  // DELETE /api/projects/:id — soft delete (archive)
+  app.delete('/api/projects/:id', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const projectId = parseInt(req.params.id);
+      const [existing] = await db.select().from(projects)
+        .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+      if (!existing) return res.status(404).json({ message: "Project not found" });
+
+      await db.update(projects)
+        .set({ isArchived: true, updatedAt: new Date() })
+        .where(eq(projects.id, projectId));
+      res.json({ message: "Project archived" });
+    } catch (error) {
+      console.error("Error archiving project:", error);
+      res.status(500).json({ message: "Failed to archive project" });
+    }
+  });
+
+  // POST /api/projects/:id/chats — create chat within project (inherits defaults)
+  app.post('/api/projects/:id/chats', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const projectId = parseInt(req.params.id);
+      const [project] = await db.select().from(projects)
+        .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+      if (!project) return res.status(404).json({ message: "Project not found" });
+
+      const overrides = req.body;
+      const merged = {
+        role: overrides.role || project.role || 'researcher',
+        customRole: overrides.customRole || project.customRole || null,
+        context: overrides.context || project.context || '',
+        constraints: overrides.constraints || project.constraints || '',
+        audience: overrides.audience || project.audience || '',
+        examples: overrides.examples || project.examples || '',
+        optional: overrides.optional || project.optional || '',
+        aiProvider: overrides.aiProvider || project.aiProvider || 'openai',
+        aiModel: overrides.aiModel || project.aiModel || 'gpt-4o',
+        title: overrides.title || 'New Chat',
+        task: overrides.task || '',
+        inputData: overrides.inputData || '',
+      };
+
+      const [chat] = await db.insert(chats).values({
+        ...merged,
+        userId,
+        projectId,
+      }).returning();
+      res.status(201).json(chat);
+    } catch (error) {
+      console.error("Error creating project chat:", error);
+      res.status(500).json({ message: "Failed to create chat" });
+    }
+  });
+
+  // GET /api/projects/:id/files — list files in project's local folder
+  const ALLOWED_EXTENSIONS = new Set([
+    '.pdf', '.md', '.txt', '.docx', '.doc', '.xlsx', '.xls', '.csv', '.json', '.yaml', '.yml',
+    '.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.rs', '.java', '.html', '.css',
+  ]);
+  const MAX_FILES_RETURNED = 500;
+  const MAX_FOLDER_DEPTH = 3;
+
+  async function walkDirectory(dirPath: string, maxDepth: number, currentDepth = 1): Promise<{ name: string; path: string; size: number; modifiedAt: string }[]> {
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    const files: { name: string; path: string; size: number; modifiedAt: string }[] = [];
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue;
+      const fullPath = path.join(dirPath, entry.name);
+      if (entry.isFile()) {
+        try {
+          const stat = await fs.stat(fullPath);
+          files.push({ name: entry.name, path: fullPath, size: stat.size, modifiedAt: stat.mtime.toISOString() });
+        } catch { /* skip unreadable files */ }
+      } else if (entry.isDirectory() && currentDepth < maxDepth) {
+        const subFiles = await walkDirectory(fullPath, maxDepth, currentDepth + 1);
+        files.push(...subFiles);
+      }
+    }
+    return files;
+  }
+
+  app.get('/api/projects/:id/files', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const projectId = parseInt(req.params.id);
+      const [project] = await db.select().from(projects)
+        .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+      if (!project) return res.status(404).json({ message: "Project not found" });
+      if (!project.localFolderPath) return res.status(400).json({ message: "No local folder configured" });
+
+      const recursive = req.query.recursive === 'true';
+      const extFilter = req.query.extensions
+        ? (req.query.extensions as string).split(',').map(e => e.startsWith('.') ? e : `.${e}`)
+        : null;
+
+      await fs.access(project.localFolderPath, fs.constants.R_OK);
+      const rawFiles = await walkDirectory(project.localFolderPath, recursive ? MAX_FOLDER_DEPTH : 1);
+
+      const filtered = rawFiles
+        .filter(f => {
+          const ext = path.extname(f.name).toLowerCase();
+          if (extFilter) return extFilter.includes(ext);
+          return ALLOWED_EXTENSIONS.has(ext);
+        })
+        .slice(0, MAX_FILES_RETURNED)
+        .map(f => ({
+          name: f.name,
+          relativePath: path.relative(project.localFolderPath!, f.path),
+          size: f.size,
+          extension: path.extname(f.name).toLowerCase(),
+          modifiedAt: f.modifiedAt,
+        }));
+
+      res.json(filtered);
+    } catch (error: any) {
+      if (error.code === 'ENOENT' || error.code === 'EACCES') {
+        return res.status(400).json({ message: "Folder not accessible" });
+      }
+      console.error("Error listing project files:", error);
+      res.status(500).json({ message: "Failed to list files" });
+    }
+  });
+
+  // GET /api/projects/:id/files/* — read/extract a specific file
+  app.get('/api/projects/:id/files/*', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const projectId = parseInt(req.params.id);
+      const [project] = await db.select().from(projects)
+        .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+      if (!project) return res.status(404).json({ message: "Project not found" });
+      if (!project.localFolderPath) return res.status(400).json({ message: "No local folder configured" });
+
+      const relativePath = req.params[0] as string;
+
+      // Security: prevent path traversal
+      const resolved = path.resolve(project.localFolderPath, relativePath);
+      if (!resolved.startsWith(path.resolve(project.localFolderPath))) {
+        return res.status(403).json({ message: "Path traversal detected" });
+      }
+
+      const stat = await fs.stat(resolved);
+      if (stat.size > 10 * 1024 * 1024) {
+        return res.status(400).json({ message: "File too large (max 10MB)" });
+      }
+
+      // Use existing FileProcessor for extraction (PDF, DOCX, XLSX)
+      const ext = path.extname(resolved).toLowerCase();
+      let content: string;
+
+      if (['.pdf', '.docx', '.doc', '.xlsx', '.xls'].includes(ext)) {
+        // FileProcessor expects a path and original filename
+        content = await FileProcessor.processFile(resolved, path.basename(resolved));
+      } else {
+        content = await fs.readFile(resolved, 'utf-8');
+      }
+
+      res.json({
+        content,
+        fileName: path.basename(resolved),
+        fileType: ext,
+        size: stat.size,
+      });
+    } catch (error: any) {
+      if (error.code === 'ENOENT') return res.status(404).json({ message: "File not found" });
+      if (error.code === 'EACCES') return res.status(403).json({ message: "File not accessible" });
+      console.error("Error reading project file:", error);
+      res.status(500).json({ message: "Failed to read file" });
+    }
+  });
+
+  // ─── End Layer 0 ──────────────────────────────────────────────────────────
+
+  // ─── Layer 4: Archive to Notion Memory ────────────────────────────────────
+
+  // POST /api/chats/:chatId/archive — classify + write to Notion
+  app.post('/api/chats/:chatId/archive', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const chatId = parseInt(req.params.chatId);
+
+      const chat = await storage.getChat(chatId);
+      if (!chat || chat.userId !== userId) {
+        return res.status(404).json({ message: "Chat not found" });
+      }
+
+      // Fetch all messages for classification
+      const chatMessages = await storage.getChatMessages(chatId);
+      if (chatMessages.length === 0) {
+        return res.status(400).json({ message: "No messages to archive" });
+      }
+
+      const messages = chatMessages.map(m => ({
+        role: m.role as 'user' | 'assistant' | 'system',
+        content: m.content,
+      }));
+
+      // Resolve project name if chat belongs to a project
+      let projectName: string | undefined;
+      if (chat.projectId) {
+        const [project] = await db.select().from(projects)
+          .where(eq(projects.id, chat.projectId));
+        projectName = project?.name;
+      }
+
+      const appUrl = process.env.APP_URL || 'http://localhost:5000';
+      const chatUrl = `${appUrl}/chat/${chatId}`;
+
+      const entry = await classifyAndArchiveChat(messages, {
+        model: chat.aiModel,
+        total_tokens: chat.totalTokensUsed ?? 0,
+        cost_usd: chat.totalCostUsd ?? 0,
+        chat_url: chatUrl,
+        project_name: projectName,
+      });
+
+      // Update chat: mark as archived and store notion page reference
+      await storage.updateChat(chatId, {
+        archivedAt: new Date(),
+      });
+
+      res.json(entry);
+    } catch (error: any) {
+      console.error("Error archiving chat:", error);
+      // Archive failure must not break the chat — return partial entry if possible
+      res.status(500).json({ message: "Failed to archive chat", error: error.message });
+    }
+  });
+
+  // ─── End Layer 4 ──────────────────────────────────────────────────────────
 
   // Create HTTP server
   const httpServer = createServer(app);

@@ -8,18 +8,19 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { 
-  Plus, 
-  Trash2, 
-  Check, 
-  X, 
-  AlertCircle, 
-  Eye, 
+import {
+  Plus,
+  Trash2,
+  Check,
+  X,
+  AlertCircle,
+  Eye,
   EyeOff,
   Bot,
   Star,
   Sparkles,
-  Brain
+  Brain,
+  Zap
 } from "lucide-react";
 import type { ApiKey, AIProvider } from "@/types";
 
@@ -125,25 +126,26 @@ export default function ApiKeyManager() {
     addKeyMutation.mutate({ provider: selectedProvider, apiKey: apiKey.trim() });
   };
 
-  const getProviderIcon = (provider: string) => {
+  const getProviderIcon = (provider: string, size = "w-6 h-6") => {
     switch (provider) {
+      case 'openrouter':
+        return <Zap className={`${size} text-indigo-600`} />;
       case 'openai':
-        return <Bot className="w-6 h-6 text-green-600" />;
+        return <Bot className={`${size} text-green-600`} />;
       case 'gemini':
-        return <Star className="w-6 h-6 text-blue-600" />;
+        return <Star className={`${size} text-blue-600`} />;
       case 'claude':
-        return <Brain className="w-6 h-6 text-purple-600" />;
+        return <Brain className={`${size} text-purple-600`} />;
       case 'grok':
-        return <Sparkles className="w-6 h-6 text-orange-600" />;
+        return <Sparkles className={`${size} text-orange-600`} />;
       default:
-        return <Bot className="w-6 h-6 text-gray-600" />;
+        return <Bot className={`${size} text-gray-600`} />;
     }
   };
 
   const getProviderName = (provider: string) => {
-    if (aiProviders && aiProviders[provider]) {
-      return aiProviders[provider].name;
-    }
+    if (provider === 'openrouter') return 'OpenRouter';
+    if (aiProviders && aiProviders[provider]) return aiProviders[provider].name;
     return provider.charAt(0).toUpperCase() + provider.slice(1);
   };
 
@@ -161,11 +163,11 @@ export default function ApiKeyManager() {
     );
   };
 
-  const availableProviders = aiProviders 
-    ? Object.keys(aiProviders).filter(provider => 
-        !apiKeys?.some(key => key.provider === provider)
-      )
-    : [];
+  // OpenRouter always first, then the individual providers from the API
+  const ALL_PROVIDERS = ['openrouter', 'openai', 'gemini', 'claude', 'grok'];
+  const availableProviders = ALL_PROVIDERS.filter(
+    provider => !apiKeys?.some(key => key.provider === provider)
+  );
 
   return (
     <div className="space-y-6">
@@ -228,7 +230,15 @@ export default function ApiKeyManager() {
                     <SelectContent>
                       {availableProviders.map((provider) => (
                         <SelectItem key={provider} value={provider}>
-                          {getProviderName(provider)}
+                          <div className="flex items-center space-x-2">
+                            {getProviderIcon(provider, "w-4 h-4")}
+                            <span>{getProviderName(provider)}</span>
+                            {provider === 'openrouter' && (
+                              <Badge className="ml-1 bg-indigo-100 text-indigo-700 border-indigo-200 text-xs px-1.5 py-0">
+                                Recommended
+                              </Badge>
+                            )}
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -279,7 +289,21 @@ export default function ApiKeyManager() {
                 </Button>
               </div>
 
-              {selectedProvider && (
+              {selectedProvider === 'openrouter' && (
+                <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+                  <div className="flex items-start space-x-2">
+                    <Zap className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                    <div className="text-sm text-indigo-800">
+                      <p className="font-semibold">One key, every model</p>
+                      <p className="mt-0.5 text-indigo-700">
+                        Your OpenRouter key routes to Claude, GPT-4o, Gemini, Grok and 200+ models automatically — no individual provider keys needed.
+                        Get your key at <span className="font-medium">openrouter.ai/keys</span>.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {selectedProvider && selectedProvider !== 'openrouter' && (
                 <div className="p-4 bg-blue-50 rounded-lg">
                   <div className="flex items-start space-x-2">
                     <AlertCircle className="w-4 h-4 text-blue-500 mt-0.5" />

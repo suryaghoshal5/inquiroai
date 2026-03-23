@@ -8,10 +8,33 @@ import {
   serial,
   boolean,
   integer,
+  real,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// Projects table — parent container for chats
+export const projects = pgTable("projects", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  role: varchar("role"),
+  customRole: text("custom_role"),
+  context: text("context"),
+  constraints: text("constraints"),
+  audience: text("audience"),
+  examples: text("examples"),
+  optional: text("optional"),
+  aiProvider: varchar("ai_provider"),
+  aiModel: varchar("ai_model"),
+  localFolderPath: text("local_folder_path"),
+  configuration: jsonb("configuration"),
+  isArchived: boolean("is_archived").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
 
 // Session storage table (required for Replit Auth)
 export const sessions = pgTable(
@@ -51,6 +74,7 @@ export const apiKeys = pgTable("api_keys", {
 export const chats = pgTable("chats", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "set null" }),
   title: varchar("title").notNull(),
   role: varchar("role").notNull(),
   customRole: text("custom_role"),
@@ -64,6 +88,11 @@ export const chats = pgTable("chats", {
   aiProvider: varchar("ai_provider").notNull(),
   aiModel: varchar("ai_model").notNull(),
   configuration: jsonb("configuration"),
+  compressionCount: integer("compression_count").default(0),
+  totalTokensUsed: integer("total_tokens_used").default(0),
+  totalCostUsd: real("total_cost_usd").default(0),
+  notionPageId: varchar("notion_page_id"),
+  archivedAt: timestamp("archived_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -88,16 +117,49 @@ export const rolePrompts = pgTable("role_prompts", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Prompt intelligence table for Layer 2
+export const promptIntelligence = pgTable('prompt_intelligence', {
+  id: serial('id').primaryKey(),
+  messageId: integer('message_id').references(() => messages.id),
+  chatId: integer('chat_id').references(() => chats.id),
+  userId: text('user_id').references(() => users.id),
+  originalPrompt: text('original_prompt').notNull(),
+  improvedPrompt: text('improved_prompt'),
+  promptType: text('prompt_type'),
+  complexity: text('complexity'),
+  score: integer('score'),
+  modelRecommended: text('model_recommended'),
+  modelUsed: text('model_used'),
+  userAcceptedSuggestion: boolean('user_accepted_suggestion'),
+  promptTokens: integer('prompt_tokens'),
+  completionTokens: integer('completion_tokens'),
+  costUsd: real('cost_usd'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   chats: many(chats),
   apiKeys: many(apiKeys),
+  projects: many(projects),
+}));
+
+export const projectsRelations = relations(projects, ({ one, many }) => ({
+  user: one(users, {
+    fields: [projects.userId],
+    references: [users.id],
+  }),
+  chats: many(chats),
 }));
 
 export const chatsRelations = relations(chats, ({ one, many }) => ({
   user: one(users, {
     fields: [chats.userId],
     references: [users.id],
+  }),
+  project: one(projects, {
+    fields: [chats.projectId],
+    references: [projects.id],
   }),
   messages: many(messages),
 }));
@@ -117,13 +179,17 @@ export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
 }));
 
 // Zod schemas for validation
+export const insertProjectSchema = createInsertSchema(projects);
 export const insertUserSchema = createInsertSchema(users);
 export const insertChatSchema = createInsertSchema(chats);
 export const insertMessageSchema = createInsertSchema(messages);
 export const insertApiKeySchema = createInsertSchema(apiKeys);
 export const insertRolePromptSchema = createInsertSchema(rolePrompts);
+export const insertPromptIntelligenceSchema = createInsertSchema(promptIntelligence);
 
 // Types
+export type InsertProject = z.infer<typeof insertProjectSchema>;
+export type Project = typeof projects.$inferSelect;
 export type UpsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertChat = z.infer<typeof insertChatSchema>;
@@ -134,6 +200,8 @@ export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type InsertRolePrompt = z.infer<typeof insertRolePromptSchema>;
 export type RolePrompt = typeof rolePrompts.$inferSelect;
+export type InsertPromptIntelligence = z.infer<typeof insertPromptIntelligenceSchema>;
+export type PromptIntelligenceRecord = typeof promptIntelligence.$inferSelect;
 
 // Chat configuration schema
 export const chatConfigSchema = z.object({
@@ -152,3 +220,20 @@ export const chatConfigSchema = z.object({
 });
 
 export type ChatConfig = z.infer<typeof chatConfigSchema>;
+
+export const projectConfigSchema = z.object({
+  name: z.string().min(1).max(200),
+  description: z.string().max(5000).optional(),
+  role: z.enum(["researcher", "product_manager", "developer", "content_writer", "designer", "presales_consultant", "custom"]).optional(),
+  customRole: z.string().optional(),
+  context: z.string().max(50000).optional(),
+  constraints: z.string().max(50000).optional(),
+  audience: z.string().max(50000).optional(),
+  examples: z.string().max(50000).optional(),
+  optional: z.string().max(50000).optional(),
+  aiProvider: z.string().optional(),
+  aiModel: z.string().optional(),
+  localFolderPath: z.string().optional(),
+});
+
+export type ProjectConfig = z.infer<typeof projectConfigSchema>;

@@ -75,21 +75,21 @@ export default function RoleSelector({ value, onChange }: RoleSelectorProps) {
               onChange={(e) => onChange(e.target.value)}
               className="peer sr-only"
             />
-            <label 
+            <label
               htmlFor={`role-${role.value}`}
-              className={`flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
-                isSelected 
-                  ? "border-blue-500 bg-blue-50" 
+              className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 h-32 text-center ${
+                isSelected
+                  ? "border-blue-500 bg-blue-50"
                   : "border-gray-200 hover:border-blue-300"
               }`}
               onClick={() => onChange(role.value)}
             >
-              <div className={`w-10 h-10 ${role.gradient} rounded-lg flex items-center justify-center mr-3`}>
+              <div className={`w-10 h-10 shrink-0 ${role.gradient} rounded-lg flex items-center justify-center`}>
                 <IconComponent className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="font-medium text-gray-900">{role.label}</p>
-                <p className="text-sm text-gray-500">{role.description}</p>
+                <p className="font-medium text-gray-900 text-sm leading-snug">{role.label}</p>
+                <p className="text-xs text-gray-500 leading-snug">{role.description}</p>
               </div>
             </label>
           </div>
