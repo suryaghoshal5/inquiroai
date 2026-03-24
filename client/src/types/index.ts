@@ -30,6 +30,7 @@ export interface Chat {
   totalCostUsd?: number | null;
   notionPageId?: string | null;
   archivedAt?: Date | null;
+  sortOrder?: number | null;
   createdAt: Date;
   updatedAt: Date;
   lastMessage?: string | null;
@@ -71,9 +72,10 @@ export interface ChatConfig {
   examples: string;
   optional: string;
   audience: string;
-  aiProvider: string;
-  aiModel: string;
+  aiProvider?: string;
+  aiModel?: string;
   title?: string;
+  projectId?: number | null;
 }
 
 export interface Project {

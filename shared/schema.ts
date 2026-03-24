@@ -93,6 +93,7 @@ export const chats = pgTable("chats", {
   totalCostUsd: real("total_cost_usd").default(0),
   notionPageId: varchar("notion_page_id"),
   archivedAt: timestamp("archived_at"),
+  sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -214,9 +215,10 @@ export const chatConfigSchema = z.object({
   examples: z.string().max(50000),
   optional: z.string().max(50000),
   audience: z.string().max(50000),
-  aiProvider: z.enum(["openai", "gemini", "claude", "grok"]),
-  aiModel: z.string(),
+  aiProvider: z.string().default("openai"),
+  aiModel: z.string().default("openai/gpt-4o"),
   title: z.string().max(100).optional(),
+  projectId: z.number().int().positive().optional().nullable(),
 });
 
 export type ChatConfig = z.infer<typeof chatConfigSchema>;

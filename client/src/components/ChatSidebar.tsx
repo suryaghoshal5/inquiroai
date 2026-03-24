@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Brain, Plus, Settings, LogOut, Search, MessageCircle,
-  FolderOpen, ChevronDown, ChevronRight, FolderPlus,
+  FolderOpen, ChevronDown, ChevronRight, FolderPlus, Pencil, Check, X,
+  GripVertical,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Reorder, useDragControls } from "framer-motion";
 import type { Chat, Project } from "@/types";
 
 interface ChatSidebarProps {
@@ -17,6 +19,149 @@ interface ChatSidebarProps {
   onNewChat: () => void;
   currentChatId?: number;
   isLoading?: boolean;
+}
+
+interface SearchResult {
+  chatId: number;
+  chatTitle: string;
+  projectId: number | null;
+  projectName: string | null;
+  matchType: "title" | "message";
+  snippet: string;
+  updatedAt: string;
+}
+
+// Highlight the matched query within text
+function Highlight({ text, query }: { text: string; query: string }) {
+  if (!query) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-yellow-200 text-yellow-900 rounded-sm px-0.5">{text.slice(idx, idx + query.length)}</mark>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
+
+// Draggable chat row item
+function DraggableChatRow({
+  chat,
+  currentChatId,
+  onChatSelect,
+  renamingChatId,
+  renameValue,
+  setRenamingChatId,
+  setRenameValue,
+  onRenameSubmit,
+  getRoleIcon,
+  formatTimeAgo,
+}: {
+  chat: Chat;
+  currentChatId?: number;
+  onChatSelect: (id: number) => void;
+  renamingChatId: number | null;
+  renameValue: string;
+  setRenamingChatId: (id: number | null) => void;
+  setRenameValue: (v: string) => void;
+  onRenameSubmit: (chatId: number, title: string) => void;
+  getRoleIcon: (role: string) => React.ReactNode;
+  formatTimeAgo: (date: Date) => string;
+}) {
+  const dragControls = useDragControls();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const isRenaming = renamingChatId === chat.id;
+
+  useEffect(() => {
+    if (isRenaming) inputRef.current?.focus();
+  }, [isRenaming]);
+
+  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") onRenameSubmit(chat.id, renameValue);
+    if (e.key === "Escape") { setRenamingChatId(null); setRenameValue(""); }
+  };
+
+  return (
+    <Reorder.Item
+      key={chat.id}
+      value={chat}
+      dragListener={false}
+      dragControls={dragControls}
+      className="list-none"
+      whileDrag={{ scale: 1.02, boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}
+    >
+      <div
+        className={`group p-2.5 rounded-xl cursor-pointer transition-all duration-150 border flex items-center space-x-2 ${
+          currentChatId === chat.id
+            ? "border-blue-500 bg-blue-50"
+            : "border-gray-100 hover:bg-gray-50"
+        }`}
+        onClick={() => !isRenaming && onChatSelect(chat.id)}
+      >
+        {/* Drag handle */}
+        <div
+          className="shrink-0 cursor-grab opacity-0 group-hover:opacity-40 hover:!opacity-80 touch-none"
+          onPointerDown={(e) => dragControls.start(e)}
+          onClick={(e) => e.stopPropagation()}
+          title="Drag to reorder"
+        >
+          <GripVertical className="w-3.5 h-3.5 text-gray-400" />
+        </div>
+
+        <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 role-${chat.role.replace("_", "-")}`}>
+          {getRoleIcon(chat.role)}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          {isRenaming ? (
+            <div className="flex items-center space-x-1" onClick={(e) => e.stopPropagation()}>
+              <input
+                ref={inputRef}
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onKeyDown={handleRenameKeyDown}
+                onBlur={() => onRenameSubmit(chat.id, renameValue)}
+                className="text-sm font-medium text-gray-900 bg-white border border-blue-400 rounded px-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-400"
+              />
+              <button onClick={() => onRenameSubmit(chat.id, renameValue)} className="text-green-600 hover:text-green-700 shrink-0">
+                <Check className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={() => { setRenamingChatId(null); setRenameValue(""); }} className="text-gray-400 hover:text-gray-600 shrink-0">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-gray-900 truncate">{chat.title}</p>
+              {chat.lastMessage && (
+                <p className="text-xs text-gray-400 truncate">{chat.lastMessage}</p>
+              )}
+            </>
+          )}
+        </div>
+
+        {!isRenaming && (
+          <div className="flex items-center space-x-1 shrink-0">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setRenamingChatId(chat.id);
+                setRenameValue(chat.title);
+              }}
+              className="opacity-0 group-hover:opacity-60 hover:!opacity-100 p-0.5 rounded hover:bg-gray-200 transition-all"
+              title="Rename chat"
+            >
+              <Pencil className="w-3 h-3 text-gray-500" />
+            </button>
+            <span className="text-xs text-gray-300">
+              {formatTimeAgo(chat.lastMessageTime || chat.updatedAt)}
+            </span>
+          </div>
+        )}
+      </div>
+    </Reorder.Item>
+  );
 }
 
 export default function ChatSidebar({
@@ -29,12 +174,96 @@ export default function ChatSidebar({
   const { user: rawUser } = useAuth();
   const user = rawUser as import("@/types").User | undefined;
   const [, navigate] = useLocation();
+  const queryClient = useQueryClient();
+
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
   const [collapsedProjects, setCollapsedProjects] = useState<Set<number>>(new Set());
+
+  // B11: Rename state
+  const [renamingChatId, setRenamingChatId] = useState<number | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  // B11: Per-project local chat order state (keyed by projectId)
+  const [projectChatOrders, setProjectChatOrders] = useState<Record<number, Chat[]>>({});
+  // B11: Standalone chats local order
+  const [standaloneOrder, setStandaloneOrder] = useState<Chat[] | null>(null);
 
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
   });
+
+  // B9: Debounced search query
+  const [debouncedQ, setDebouncedQ] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedQ(val.trim()), 300);
+  };
+
+  const { data: searchResults = [] } = useQuery<SearchResult[]>({
+    queryKey: ["/api/search", debouncedQ],
+    queryFn: async () => {
+      if (debouncedQ.length < 2) return [];
+      const res = await fetch(`/api/search?q=${encodeURIComponent(debouncedQ)}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: debouncedQ.length >= 2,
+    staleTime: 10_000,
+  });
+
+  const showSearchDropdown = searchFocused && debouncedQ.length >= 2;
+
+  // B11: Rename mutation
+  const renameMutation = useMutation({
+    mutationFn: async ({ chatId, title }: { chatId: number; title: string }) => {
+      const res = await fetch(`/api/chats/${chatId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      if (!res.ok) throw new Error("Rename failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/chats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+    },
+  });
+
+  const handleRenameSubmit = (chatId: number, title: string) => {
+    const trimmed = title.trim();
+    setRenamingChatId(null);
+    setRenameValue("");
+    if (!trimmed) return;
+    const chat = chats.find(c => c.id === chatId);
+    if (chat && trimmed !== chat.title) {
+      renameMutation.mutate({ chatId, title: trimmed });
+    }
+  };
+
+  // B11: Reorder mutation
+  const reorderMutation = useMutation({
+    mutationFn: async (items: Array<{ id: number; sortOrder: number }>) => {
+      await fetch("/api/chats/reorder", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(items),
+      });
+    },
+  });
+
+  const handleProjectReorder = (projectId: number, newOrder: Chat[]) => {
+    setProjectChatOrders(prev => ({ ...prev, [projectId]: newOrder }));
+    reorderMutation.mutate(newOrder.map((c, i) => ({ id: c.id, sortOrder: i })));
+  };
+
+  const handleStandaloneReorder = (newOrder: Chat[]) => {
+    setStandaloneOrder(newOrder);
+    reorderMutation.mutate(newOrder.map((c, i) => ({ id: c.id, sortOrder: i })));
+  };
 
   const toggleProject = (id: number) => {
     setCollapsedProjects(prev => {
@@ -46,12 +275,12 @@ export default function ChatSidebar({
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case 'researcher':        return <i className="fas fa-search text-white text-sm"></i>;
-      case 'product_manager':   return <i className="fas fa-chart-line text-white text-sm"></i>;
-      case 'developer':         return <i className="fas fa-code text-white text-sm"></i>;
-      case 'content_writer':    return <i className="fas fa-pen-fancy text-white text-sm"></i>;
-      case 'designer':          return <i className="fas fa-palette text-white text-sm"></i>;
-      default:                  return <MessageCircle className="w-4 h-4 text-white" />;
+      case "researcher":       return <i className="fas fa-search text-white text-sm"></i>;
+      case "product_manager":  return <i className="fas fa-chart-line text-white text-sm"></i>;
+      case "developer":        return <i className="fas fa-code text-white text-sm"></i>;
+      case "content_writer":   return <i className="fas fa-pen-fancy text-white text-sm"></i>;
+      case "designer":         return <i className="fas fa-palette text-white text-sm"></i>;
+      default:                 return <MessageCircle className="w-4 h-4 text-white" />;
     }
   };
 
@@ -63,44 +292,36 @@ export default function ChatSidebar({
     if (days > 0)    return `${days}d ago`;
     if (hours > 0)   return `${hours}h ago`;
     if (minutes > 0) return `${minutes}m ago`;
-    return 'Just now';
+    return "Just now";
   };
 
   const filterText = searchTerm.toLowerCase();
 
-  // Partition chats: project-bound vs standalone
-  const projectIds = new Set(projects.map(p => p.id));
-  const standalonChats = chats.filter(c =>
+  // Partition chats: standalone only (non-search view)
+  const standaloneChatsBase = chats.filter(c =>
     !c.projectId &&
-    (filterText === '' || c.title.toLowerCase().includes(filterText))
-  );
+    (filterText === "" || c.title.toLowerCase().includes(filterText))
+  ).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
-  const renderChatRow = (chat: Chat) => (
-    <div
-      key={chat.id}
-      onClick={() => onChatSelect(chat.id)}
-      className={`p-2.5 rounded-xl cursor-pointer transition-all duration-150 border ${
-        currentChatId === chat.id
-          ? 'border-blue-500 bg-blue-50'
-          : 'border-gray-100 hover:bg-gray-50'
-      }`}
-    >
-      <div className="flex items-center space-x-2">
-        <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 role-${chat.role.replace('_', '-')}`}>
-          {getRoleIcon(chat.role)}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">{chat.title}</p>
-          {chat.lastMessage && (
-            <p className="text-xs text-gray-400 truncate">{chat.lastMessage}</p>
-          )}
-        </div>
-        <span className="text-xs text-gray-300 shrink-0">
-          {formatTimeAgo(chat.lastMessageTime || chat.updatedAt)}
-        </span>
-      </div>
-    </div>
-  );
+  const standaloneChats = standaloneOrder ?? standaloneChatsBase;
+
+  // Sync standaloneOrder when base data changes (new chats added, etc.)
+  const standaloneBaseKey = standaloneChatsBase.map(c => c.id).join(",");
+  useEffect(() => {
+    setStandaloneOrder(null); // reset local order on data refresh
+  }, [standaloneBaseKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const sharedRowProps = {
+    currentChatId,
+    onChatSelect,
+    renamingChatId,
+    renameValue,
+    setRenamingChatId,
+    setRenameValue,
+    onRenameSubmit: handleRenameSubmit,
+    getRoleIcon,
+    formatTimeAgo,
+  };
 
   return (
     <div className="w-80 bg-white shadow-lg border-r border-gray-200 flex flex-col">
@@ -136,18 +357,75 @@ export default function ChatSidebar({
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="px-4 pb-3">
+      {/* Search — B9 */}
+      <div className="px-4 pb-3 relative">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Search chats..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
             className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           />
+          {searchTerm && (
+            <button
+              onClick={() => { setSearchTerm(""); setDebouncedQ(""); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
+
+        {/* Search results dropdown */}
+        {showSearchDropdown && (
+          <div className="absolute left-4 right-4 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-72 overflow-y-auto">
+            {searchResults.length === 0 ? (
+              <div className="px-4 py-3 text-sm text-gray-400 text-center">No results found</div>
+            ) : (
+              <>
+                <div className="px-3 py-1.5 text-xs text-gray-400 border-b border-gray-100">
+                  {searchResults.length} result{searchResults.length !== 1 ? "s" : ""}
+                </div>
+                {searchResults.map((r) => (
+                  <button
+                    key={r.chatId}
+                    className="w-full text-left px-3 py-2.5 hover:bg-gray-50 border-b border-gray-50 last:border-0 transition-colors"
+                    onMouseDown={() => {
+                      setSearchTerm("");
+                      setDebouncedQ("");
+                      onChatSelect(r.chatId);
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        <Highlight text={r.chatTitle} query={debouncedQ} />
+                      </p>
+                      <span className={`text-xs ml-2 shrink-0 px-1.5 py-0.5 rounded-full ${
+                        r.matchType === "title"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-amber-100 text-amber-700"
+                      }`}>
+                        {r.matchType === "title" ? "title" : "content"}
+                      </span>
+                    </div>
+                    {r.projectName && (
+                      <p className="text-xs text-gray-400 mt-0.5">📁 {r.projectName}</p>
+                    )}
+                    {r.matchType === "message" && (
+                      <p className="text-xs text-gray-500 mt-0.5 truncate italic">
+                        <Highlight text={r.snippet} query={debouncedQ} />
+                      </p>
+                    )}
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <ScrollArea className="flex-1 px-3 pb-4">
@@ -170,14 +448,15 @@ export default function ChatSidebar({
             {/* Project groups */}
             {projects
               .filter(p =>
-                filterText === '' ||
+                filterText === "" ||
                 p.name.toLowerCase().includes(filterText) ||
                 (p.chats ?? []).some(c => c.title.toLowerCase().includes(filterText))
               )
               .map(project => {
-                const projectChats = (project.chats ?? []).filter(c =>
-                  filterText === '' || c.title.toLowerCase().includes(filterText)
-                );
+                const rawProjectChats = (project.chats ?? [])
+                  .filter(c => filterText === "" || c.title.toLowerCase().includes(filterText))
+                  .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+                const projectChats = projectChatOrders[project.id] ?? rawProjectChats;
                 const isCollapsed = collapsedProjects.has(project.id);
 
                 return (
@@ -193,31 +472,38 @@ export default function ChatSidebar({
                           : <ChevronDown className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                         }
                         <FolderOpen className="w-4 h-4 text-blue-500 shrink-0" />
-                        <span
-                          className="text-sm font-semibold text-gray-700 truncate"
-                          title={project.name}
-                        >
+                        <span className="text-sm font-semibold text-gray-700 truncate" title={project.name}>
                           {project.name}
                         </span>
                       </div>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/projects/${project.id}`);
-                        }}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/projects/${project.id}`); }}
                         className="opacity-0 group-hover:opacity-100 text-xs text-blue-500 hover:text-blue-700 shrink-0 ml-1"
                       >
                         Open
                       </button>
                     </div>
 
-                    {/* Chats under project */}
+                    {/* Chats under project — with drag-and-drop */}
                     {!isCollapsed && (
-                      <div className="ml-5 mt-1 space-y-1">
-                        {projectChats.map(renderChatRow)}
+                      <div className="ml-5 mt-1">
+                        <Reorder.Group
+                          axis="y"
+                          values={projectChats}
+                          onReorder={(newOrder) => handleProjectReorder(project.id, newOrder)}
+                          className="space-y-1"
+                        >
+                          {projectChats.map(chat => (
+                            <DraggableChatRow
+                              key={chat.id}
+                              chat={chat}
+                              {...sharedRowProps}
+                            />
+                          ))}
+                        </Reorder.Group>
                         <button
                           onClick={() => navigate(`/projects/${project.id}/chat/new`)}
-                          className="w-full flex items-center space-x-1.5 px-2.5 py-1.5 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="w-full flex items-center space-x-1.5 px-2.5 py-1.5 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors mt-1"
                         >
                           <Plus className="w-3.5 h-3.5" />
                           <span>New Chat</span>
@@ -228,8 +514,8 @@ export default function ChatSidebar({
                 );
               })}
 
-            {/* Standalone chats divider */}
-            {standalonChats.length > 0 && (
+            {/* Standalone chats divider — with drag-and-drop */}
+            {standaloneChats.length > 0 && (
               <>
                 {projects.length > 0 && (
                   <div className="flex items-center gap-2 py-1 px-1">
@@ -238,14 +524,25 @@ export default function ChatSidebar({
                     <div className="h-px flex-1 bg-gray-200" />
                   </div>
                 )}
-                <div className="space-y-1">
-                  {standalonChats.map(renderChatRow)}
-                </div>
+                <Reorder.Group
+                  axis="y"
+                  values={standaloneChats}
+                  onReorder={handleStandaloneReorder}
+                  className="space-y-1"
+                >
+                  {standaloneChats.map(chat => (
+                    <DraggableChatRow
+                      key={chat.id}
+                      chat={chat}
+                      {...sharedRowProps}
+                    />
+                  ))}
+                </Reorder.Group>
               </>
             )}
 
             {/* Empty state */}
-            {projects.length === 0 && standalonChats.length === 0 && (
+            {projects.length === 0 && standaloneChats.length === 0 && (
               <div className="text-center py-10">
                 <FolderOpen className="w-10 h-10 text-gray-200 mx-auto mb-2" />
                 <p className="text-sm text-gray-400">No projects yet</p>
@@ -260,13 +557,13 @@ export default function ChatSidebar({
       <div className="p-4 border-t border-gray-200">
         <div className="flex items-center space-x-3">
           <img
-            src={user?.profileImageUrl || `https://ui-avatars.com/api/?name=${user?.firstName || 'User'}&background=6366f1&color=fff`}
+            src={user?.profileImageUrl || `https://ui-avatars.com/api/?name=${user?.firstName || "User"}&background=6366f1&color=fff`}
             alt="User"
             className="w-9 h-9 rounded-full object-cover border-2 border-gray-200"
           />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">
-              {`${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'User'}
+              {`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "User"}
             </p>
             <p className="text-xs text-gray-400 truncate">{user?.email}</p>
           </div>

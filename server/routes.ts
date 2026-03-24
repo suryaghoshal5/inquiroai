@@ -6,16 +6,21 @@ import { AIOrchestrator, AI_PROVIDERS } from "./services/aiOrchestrator";
 import { PromptService } from "./services/promptService";
 import { FileProcessor } from "./services/fileProcessor";
 import { CryptoService } from "./services/cryptoService";
-import { chatConfigSchema, insertMessageSchema, insertApiKeySchema, promptIntelligence, projects, chats, projectConfigSchema } from "@shared/schema";
+import { chatConfigSchema, insertMessageSchema, insertApiKeySchema, promptIntelligence, projects, chats, messages as messagesTable, projectConfigSchema } from "@shared/schema";
 import { evaluatePrompt } from "./promptEvaluator";
 import { recommendModel } from "./modelRouter";
 import { manageContext, estimateMessagesTokens, estimateTokens } from "./contextManager";
 import { classifyAndArchiveChat } from "./notionMemory";
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, ilike, inArray, or } from "drizzle-orm";
 import { z } from "zod";
 import fs from "fs/promises";
 import path from "path";
+import {
+  MAX_FILES_RETURNED,
+  MAX_FOLDER_DEPTH,
+  ALLOWED_EXTENSIONS,
+} from "./config";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // In development mode, bypass authentication and use mock user
@@ -92,6 +97,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const universalInstructions = PromptService.getUniversalInstructions();
       const fullPrompt = `${systemPrompt}\n\n${universalInstructions}`;
       
+      // Validate projectId belongs to this user if provided
+      if (config.projectId) {
+        const project = await db.select().from(projects)
+          .where(and(eq(projects.id, config.projectId), eq(projects.userId, userId)));
+        if (!project.length) {
+          res.status(403).json({ message: "Project not found or access denied" });
+          return;
+        }
+      }
+
       const chat = await storage.createChat({
         userId,
         title: config.title || `${config.role.charAt(0).toUpperCase() + config.role.slice(1).replace('_', ' ')} Chat`,
@@ -106,6 +121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         audience: config.audience,
         aiProvider: config.aiProvider,
         aiModel: config.aiModel,
+        projectId: config.projectId ?? null,
         configuration: { systemPrompt: fullPrompt }
       });
 
@@ -201,46 +217,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post('/api/chats/:id/messages', mockAuth, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const chatId = parseInt(req.params.id);
+    const { content, modelOverride } = req.body;
+
+    // --- Validation (before SSE headers are set, so errors can still be JSON) ---
+    if (!content || typeof content !== 'string') {
+      return res.status(400).json({ message: "Message content is required" });
+    }
+
+    const chat = await storage.getChat(chatId);
+    if (!chat || chat.userId !== userId) {
+      return res.status(404).json({ message: "Chat not found" });
+    }
+
+    // --- Layer 2: Prompt Intelligence Pipeline (runs before stream starts) ---
+    let userMessage: any;
+    let evaluation: any;
     try {
-      const userId = req.user.claims.sub;
-      const chatId = parseInt(req.params.id);
-      const { content, modelOverride } = req.body;
-
-      console.log(`Message request - User: ${userId}, Chat: ${chatId}, Content: ${content?.substring(0, 100)}...`);
-
-      if (!content || typeof content !== 'string') {
-        return res.status(400).json({ message: "Message content is required" });
-      }
-
-      const chat = await storage.getChat(chatId);
-      if (!chat || chat.userId !== userId) {
-        console.log(`Chat not found or unauthorized - Chat: ${chat ? 'exists' : 'not found'}, User match: ${chat?.userId === userId}`);
-        return res.status(404).json({ message: "Chat not found" });
-      }
-
-      console.log(`Chat found - Provider: ${chat.aiProvider}, Model: ${chat.aiModel}`);
-
-      // --- Layer 2: Prompt Intelligence Pipeline ---
-      // Run evaluation in parallel with saving the user message (non-blocking)
-      const [userMessage, evaluation] = await Promise.all([
+      [userMessage, evaluation] = await Promise.all([
         storage.createMessage({ chatId, role: "user", content }),
         evaluatePrompt(content),
       ]);
+    } catch (error: any) {
+      console.error("Error in pre-stream setup:", error);
+      return res.status(500).json({ message: "Failed to process message", error: error.message });
+    }
 
-      const recommendation = recommendModel(evaluation.prompt_type, evaluation.complexity);
+    const recommendation = recommendModel(evaluation.prompt_type, evaluation.complexity);
+    const modelToUse = modelOverride || recommendation.model;
+    console.log(`Prompt score: ${evaluation.score}, recommended: ${recommendation.model}, using: ${modelToUse}`);
 
-      // Determine model to use: explicit override > router recommendation > chat default
-      const modelToUse = modelOverride || recommendation.model;
-      console.log(`Prompt score: ${evaluation.score}, recommended: ${recommendation.model}, using: ${modelToUse}`);
-      // --- End Layer 2 setup ---
-
-      // OpenRouter handles all AI routing — no per-provider API key required.
-      console.log(`Using OpenRouter for provider ${chat.aiProvider}`);
-
-      // Get chat history for context
+    // --- Layer 3: Context Manager (runs before stream starts) ---
+    let contextResult: any;
+    let systemPrompt: string;
+    try {
       const chatMessages = await storage.getChatMessages(chatId);
-
-      // Generate system prompt from chat configuration
       const chatConfig = {
         role: chat.role as "custom" | "researcher" | "product_manager" | "developer" | "content_writer" | "designer",
         customRole: chat.customRole || undefined,
@@ -253,58 +265,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
         audience: chat.audience || "",
         aiProvider: chat.aiProvider as "openai" | "gemini" | "claude" | "grok",
         aiModel: modelToUse,
-        title: chat.title
+        title: chat.title,
       };
+      systemPrompt = await PromptService.generatePrompt(chatConfig);
 
-      const systemPrompt = await PromptService.generatePrompt(chatConfig);
-
-      // --- Layer 3: Context Manager ---
       const rawMessages = chatMessages.map(m => ({
         role: m.role as 'user' | 'assistant' | 'system',
         content: m.content,
       }));
-
-      const contextResult = await manageContext(
-        rawMessages,
-        modelToUse,
-        systemPrompt,
-        chat.compressionCount ?? 0
-      );
-
+      contextResult = await manageContext(rawMessages, modelToUse, systemPrompt, chat.compressionCount ?? 0);
       console.log(`Context: ${contextResult.current_tokens}/${contextResult.limit_tokens} tokens, compressed: ${contextResult.was_compressed}`);
+    } catch (error: any) {
+      console.error("Error in context setup:", error);
+      return res.status(500).json({ message: "Failed to build context", error: error.message });
+    }
 
-      const context = contextResult.messages.map(m => m.content);
-      // --- End Layer 3 ---
+    const context = contextResult.messages.map((m: any) => m.content);
 
-      console.log(`Generating system prompt and AI response...`);
+    // --- Switch to SSE mode — no more res.json() from here on ---
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
 
-      const aiResponse = await AIOrchestrator.generateResponse(
+    const sendEvent = (payload: object) => {
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    };
+
+    // Send metadata first so the frontend can update banner/model chip immediately
+    sendEvent({
+      type: 'metadata',
+      evaluation: {
+        score: evaluation.score,
+        issues: evaluation.issues,
+        improved_prompt: evaluation.improved_prompt,
+        prompt_type: evaluation.prompt_type,
+        complexity: evaluation.complexity,
+        show_suggestion: evaluation.show_suggestion,
+      },
+      recommendation: {
+        model: recommendation.model,
+        display_name: recommendation.display_name,
+        reasoning: recommendation.reasoning,
+        estimated_cost_per_1k_tokens: recommendation.estimated_cost_per_1k_tokens,
+      },
+      context_status: {
+        current_tokens: contextResult.current_tokens,
+        limit_tokens: contextResult.limit_tokens,
+        compression_count: contextResult.compression_count,
+        was_compressed: contextResult.was_compressed,
+      },
+    });
+
+    // --- Stream AI response ---
+    try {
+      let fullContent = '';
+      const streamResult = await AIOrchestrator.streamResponse(
         userId,
         chat.aiProvider,
         modelToUse,
-        systemPrompt,
-        context
+        systemPrompt!,
+        context,
+        (token: string) => {
+          sendEvent({ type: 'token', token });
+        }
       );
+      fullContent = streamResult.content;
 
-      console.log(`AI response generated successfully, length: ${aiResponse.length}`);
-
-      // Save AI response
+      // Save assistant message
       const aiMessage = await storage.createMessage({
         chatId,
         role: "assistant",
-        content: aiResponse,
-        metadata: { provider: chat.aiProvider, model: modelToUse }
+        content: fullContent,
+        metadata: { provider: chat.aiProvider, model: modelToUse },
       });
 
       // Update chat: timestamp + compression count + token usage
-      const tokenDelta = estimateTokens(content) + estimateTokens(aiResponse);
+      const tokenDelta = estimateTokens(content) + estimateTokens(fullContent);
       await storage.updateChat(chatId, {
         updatedAt: new Date(),
         compressionCount: contextResult.compression_count,
         totalTokensUsed: (chat.totalTokensUsed ?? 0) + tokenDelta,
       });
 
-      // Persist prompt intelligence record (fire-and-forget — never block response)
+      sendEvent({ type: 'done', messageId: aiMessage.id });
+      res.end();
+
+      // Persist prompt intelligence record (fire-and-forget)
       db.insert(promptIntelligence).values({
         messageId: userMessage.id,
         chatId,
@@ -317,43 +364,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         modelRecommended: recommendation.model,
         modelUsed: modelToUse,
         userAcceptedSuggestion: modelOverride ? true : null,
-      }).catch(err => console.warn('Failed to save prompt intelligence record:', err));
+      }).catch((err: any) => console.warn('Failed to save prompt intelligence record:', err));
 
-      res.json({
-        ...aiMessage,
-        evaluation: {
-          score: evaluation.score,
-          issues: evaluation.issues,
-          improved_prompt: evaluation.improved_prompt,
-          prompt_type: evaluation.prompt_type,
-          complexity: evaluation.complexity,
-          show_suggestion: evaluation.show_suggestion,
-        },
-        recommendation: {
-          model: recommendation.model,
-          display_name: recommendation.display_name,
-          reasoning: recommendation.reasoning,
-          estimated_cost_per_1k_tokens: recommendation.estimated_cost_per_1k_tokens,
-        },
-        model_used: modelToUse,
-        context_status: {
-          current_tokens: contextResult.current_tokens,
-          limit_tokens: contextResult.limit_tokens,
-          compression_count: contextResult.compression_count,
-          was_compressed: contextResult.was_compressed,
-        },
-      });
     } catch (error: any) {
-      console.error("Error sending message:", error);
-      console.error("Error details:", {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-      res.status(500).json({
-        message: "Failed to send message",
-        error: error.message
-      });
+      console.error("Error during AI stream:", error);
+      sendEvent({ type: 'error', error: error.message || 'Stream failed' });
+      res.end();
     }
   });
 
@@ -375,6 +391,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PATCH /api/chats/reorder — bulk update sortOrder for a list of chats (must be before /:id)
+  app.patch('/api/chats/reorder', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const schema = z.array(z.object({ id: z.number().int().positive(), sortOrder: z.number().int() }));
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Invalid data" });
+
+      // Update each chat's sortOrder — enforce userId to prevent cross-user tampering
+      await Promise.all(parsed.data.map(({ id, sortOrder }) =>
+        db.update(chats).set({ sortOrder }).where(and(eq(chats.id, id), eq(chats.userId, userId)))
+      ));
+      res.json({ message: "Order saved" });
+    } catch (error) {
+      console.error("Error reordering chats:", error);
+      res.status(500).json({ message: "Failed to reorder chats" });
+    }
+  });
+
   // PATCH /api/chats/:id — update chat metadata (e.g. link/unlink project)
   app.patch('/api/chats/:id', mockAuth, async (req: any, res) => {
     try {
@@ -386,7 +421,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Chat not found" });
       }
 
-      const allowedFields = ['projectId', 'title'] as const;
+      const allowedFields = ['projectId', 'title', 'sortOrder', 'role', 'customRole'] as const;
       const updates: Record<string, unknown> = {};
       for (const field of allowedFields) {
         if (field in req.body) updates[field] = req.body[field];
@@ -686,15 +721,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const overrides = req.body;
       const merged = {
-        role: overrides.role || project.role || 'researcher',
-        customRole: overrides.customRole || project.customRole || null,
+        // C1: role is chat-specific only — never inherited from project
+        role: overrides.role || 'researcher',
+        customRole: overrides.customRole || null,
         context: overrides.context || project.context || '',
         constraints: overrides.constraints || project.constraints || '',
         audience: overrides.audience || project.audience || '',
         examples: overrides.examples || project.examples || '',
         optional: overrides.optional || project.optional || '',
+        // C2: 'auto' sentinel or omitted → router picks model on first message
         aiProvider: overrides.aiProvider || project.aiProvider || 'openai',
-        aiModel: overrides.aiModel || project.aiModel || 'gpt-4o',
+        aiModel: overrides.aiModel || project.aiModel || 'openai/gpt-4o',
         title: overrides.title || 'New Chat',
         task: overrides.task || '',
         inputData: overrides.inputData || '',
@@ -713,13 +750,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/projects/:id/files — list files in project's local folder
-  const ALLOWED_EXTENSIONS = new Set([
-    '.pdf', '.md', '.txt', '.docx', '.doc', '.xlsx', '.xls', '.csv', '.json', '.yaml', '.yml',
-    '.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.rs', '.java', '.html', '.css',
-  ]);
-  const MAX_FILES_RETURNED = 500;
-  const MAX_FOLDER_DEPTH = 3;
-
   async function walkDirectory(dirPath: string, maxDepth: number, currentDepth = 1): Promise<{ name: string; path: string; size: number; modifiedAt: string }[]> {
     const entries = await fs.readdir(dirPath, { withFileTypes: true });
     const files: { name: string; path: string; size: number; modifiedAt: string }[] = [];
@@ -863,7 +893,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         projectName = project?.name;
       }
 
-      const appUrl = process.env.APP_URL || 'http://localhost:5000';
+      const appUrl = process.env.APP_URL ?? 'http://localhost:5000';
       const chatUrl = `${appUrl}/chat/${chatId}`;
 
       const entry = await classifyAndArchiveChat(messages, {
@@ -888,6 +918,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ─── End Layer 4 ──────────────────────────────────────────────────────────
+
+  // ─── B9: Chat Search ───────────────────────────────────────────────────────
+
+  // GET /api/search?q= — full-text search: chat titles + message content (ILIKE)
+  app.get('/api/search', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const q = (req.query.q as string || '').trim();
+      if (!q || q.length < 2) return res.json([]);
+
+      const pattern = `%${q}%`;
+
+      // 1. Title matches
+      const titleMatches = await db
+        .select({
+          chatId: chats.id,
+          chatTitle: chats.title,
+          projectId: chats.projectId,
+          projectName: projects.name,
+          updatedAt: chats.updatedAt,
+        })
+        .from(chats)
+        .leftJoin(projects, eq(chats.projectId, projects.id))
+        .where(and(eq(chats.userId, userId), ilike(chats.title, pattern)))
+        .limit(10);
+
+      const titleChatIds = new Set(titleMatches.map(m => m.chatId));
+
+      // 2. Message content matches — find chats not already matched by title
+      const msgMatches = await db
+        .select({ chatId: messagesTable.chatId, content: messagesTable.content })
+        .from(messagesTable)
+        .innerJoin(chats, eq(messagesTable.chatId, chats.id))
+        .where(and(eq(chats.userId, userId), ilike(messagesTable.content, pattern)))
+        .limit(50);
+
+      // Deduplicate: one chat per content match, skip chats already in title matches
+      const uniqueMsgChatIds: number[] = [];
+      const snippetMap = new Map<number, string>();
+      for (const m of msgMatches) {
+        if (!titleChatIds.has(m.chatId) && !snippetMap.has(m.chatId)) {
+          uniqueMsgChatIds.push(m.chatId);
+          const lc = m.content.toLowerCase();
+          const idx = lc.indexOf(q.toLowerCase());
+          const start = Math.max(0, idx - 50);
+          const end = Math.min(m.content.length, idx + q.length + 50);
+          const snippet = (start > 0 ? '…' : '') + m.content.slice(start, end) + (end < m.content.length ? '…' : '');
+          snippetMap.set(m.chatId, snippet);
+        }
+      }
+
+      let msgResults: any[] = [];
+      if (uniqueMsgChatIds.length > 0) {
+        const chatDetails = await db
+          .select({
+            chatId: chats.id,
+            chatTitle: chats.title,
+            projectId: chats.projectId,
+            projectName: projects.name,
+            updatedAt: chats.updatedAt,
+          })
+          .from(chats)
+          .leftJoin(projects, eq(chats.projectId, projects.id))
+          .where(and(eq(chats.userId, userId), inArray(chats.id, uniqueMsgChatIds)));
+
+        msgResults = chatDetails.map(c => ({
+          chatId: c.chatId,
+          chatTitle: c.chatTitle,
+          projectId: c.projectId,
+          projectName: c.projectName,
+          matchType: 'message' as const,
+          snippet: snippetMap.get(c.chatId) ?? '',
+          updatedAt: c.updatedAt,
+        }));
+      }
+
+      const titleResults = titleMatches.map(m => ({
+        chatId: m.chatId,
+        chatTitle: m.chatTitle,
+        projectId: m.projectId,
+        projectName: m.projectName,
+        matchType: 'title' as const,
+        snippet: m.chatTitle,
+        updatedAt: m.updatedAt,
+      }));
+
+      res.json([...titleResults, ...msgResults].slice(0, 20));
+    } catch (error) {
+      console.error("Error searching:", error);
+      res.status(500).json({ message: "Search failed" });
+    }
+  });
+
+  // ─── End B9 ────────────────────────────────────────────────────────────────
 
   // Create HTTP server
   const httpServer = createServer(app);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -8,11 +8,34 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Brain, Plus, MessageCircle, Settings, ArrowRight,
   FolderOpen, ChevronDown, ChevronRight, FolderPlus, Zap,
-  Bot, Search, Link2,
+  Bot, Search, Link2, X,
 } from "lucide-react";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import LinkToProjectModal from "@/components/LinkToProjectModal";
 import type { Chat, Project } from "@/types";
+
+interface SearchResult {
+  chatId: number;
+  chatTitle: string;
+  projectId: number | null;
+  projectName: string | null;
+  matchType: "title" | "message";
+  snippet: string;
+  updatedAt: string;
+}
+
+function Highlight({ text, query }: { text: string; query: string }) {
+  if (!query) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-yellow-200 text-yellow-900 rounded-sm px-0.5">{text.slice(idx, idx + query.length)}</mark>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
 
 export default function Dashboard() {
   const { isAuthenticated, isLoading, user: rawUser } = useAuth();
@@ -20,7 +43,28 @@ export default function Dashboard() {
   const [, navigate] = useLocation();
   const [collapsedProjects, setCollapsedProjects] = useState<Set<number>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [debouncedQ, setDebouncedQ] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [linkingChat, setLinkingChat] = useState<Chat | null>(null);
+
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedQ(val.trim()), 300);
+  };
+
+  const { data: searchResults = [] } = useQuery<SearchResult[]>({
+    queryKey: ["/api/search", debouncedQ],
+    queryFn: async () => {
+      if (debouncedQ.length < 2) return [];
+      const res = await fetch(`/api/search?q=${encodeURIComponent(debouncedQ)}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: debouncedQ.length >= 2,
+    staleTime: 10_000,
+  });
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
@@ -122,7 +166,7 @@ export default function Dashboard() {
               variant="outline"
               size="sm"
               onClick={() => navigate("/chat/new")}
-              className="flex items-center gap-1.5"
+              className="flex items-center gap-1.5 hover:scale-[1.02] transition-all duration-200"
             >
               <Zap className="w-3.5 h-3.5 text-amber-500" />
               Quick Chat
@@ -130,7 +174,7 @@ export default function Dashboard() {
             <Button
               size="sm"
               onClick={() => navigate("/projects/new")}
-              className="gradient-bg text-white flex items-center gap-1.5"
+              className="gradient-bg text-white flex items-center gap-1.5 hover:scale-[1.02] hover:shadow-md transition-all duration-200"
             >
               <FolderPlus className="w-3.5 h-3.5" />
               New Project
@@ -141,16 +185,73 @@ export default function Dashboard() {
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
 
-        {/* Search */}
+        {/* Search — B9 */}
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
             placeholder="Search projects and chats…"
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            onChange={e => handleSearchChange(e.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
+            className="w-full pl-10 pr-9 py-2.5 border border-gray-200 rounded-xl text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           />
+          {searchTerm && (
+            <button
+              onClick={() => { setSearchTerm(""); setDebouncedQ(""); }}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {/* Content search results dropdown */}
+          {searchFocused && debouncedQ.length >= 2 && (
+            <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-80 overflow-y-auto">
+              {searchResults.length === 0 ? (
+                <div className="px-4 py-3 text-sm text-gray-400 text-center">No results found</div>
+              ) : (
+                <>
+                  <div className="px-3 py-1.5 text-xs text-gray-400 border-b border-gray-100">
+                    {searchResults.length} result{searchResults.length !== 1 ? "s" : ""}
+                  </div>
+                  {searchResults.map((r) => (
+                    <button
+                      key={r.chatId}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 transition-colors"
+                      onMouseDown={() => {
+                        setSearchTerm("");
+                        setDebouncedQ("");
+                        navigate(`/chat/${r.chatId}`);
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          <Highlight text={r.chatTitle} query={debouncedQ} />
+                        </p>
+                        <span className={`text-xs ml-2 shrink-0 px-1.5 py-0.5 rounded-full ${
+                          r.matchType === "title"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}>
+                          {r.matchType === "title" ? "title" : "content"}
+                        </span>
+                      </div>
+                      {r.projectName && (
+                        <p className="text-xs text-gray-400 mt-0.5">📁 {r.projectName}</p>
+                      )}
+                      {r.matchType === "message" && (
+                        <p className="text-xs text-gray-500 mt-0.5 truncate italic">
+                          <Highlight text={r.snippet} query={debouncedQ} />
+                        </p>
+                      )}
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Empty state */}
@@ -200,7 +301,7 @@ export default function Dashboard() {
                   const isCollapsed = collapsedProjects.has(project.id);
 
                   return (
-                    <div key={project.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div key={project.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:ring-1 hover:ring-purple-200 hover:shadow-md">
                       {/* Project header row */}
                       <div
                         className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors"

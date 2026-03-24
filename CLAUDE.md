@@ -1619,7 +1619,75 @@ Two X buttons overlaid on the provider and model Select triggers:
 
 ---
 
-### Build Status Update (as of 2026-03-24)
+---
+
+## Sprint 3 Design Decisions (2026-03-25)
+
+### D1 — Role Does Not Belong to Projects
+
+**Decision:** Remove the role selector from `NewProject` and `EditProject` forms. Role is a chat-level concern only.
+
+**Rationale:** A project spans multiple work streams with different roles:
+- Chat 1: Market research → Researcher
+- Chat 2: Feature specification → Product Manager
+- Chat 3: API implementation → Developer
+- Chat 4: Release notes → Content Writer
+
+Forcing a project-level role creates a false constraint. The `role`/`customRole` columns remain in the `projects` DB table (no migration needed) but are no longer surfaced in the UI or used in field inheritance.
+
+**Impact on field inheritance:** `POST /api/projects/:id/chats` merge logic must NOT inherit `role` from the project. The `role` field must always be explicitly provided at chat creation time.
+
+**Files to update:** `NewProject.tsx`, `EditProject.tsx`, field-merge logic in `server/routes.ts`.
+
+---
+
+### D2 — Model Selection is Algorithm Output, Not User Input
+
+**Decision:** The routing algorithm selects the model. Users interact with the AI to get work done — they should not need to know or care which model runs their prompt.
+
+**New mental model:**
+- **Default state:** "Auto" — the evaluator + router pick the best model per message
+- **Override state:** User explicitly selects a model; persists for the chat session
+- **Reset:** User can revert to Auto at any time
+
+**Implementation across two surfaces:**
+
+#### D2a — Chat Creation Forms (NewChatForm, NewProjectChat)
+- Hide the `ModelPicker` component by default
+- Show a subtle "AI Engine: Auto · Override →" text link below the form
+- Clicking "Override →" expands the `ModelPicker` inline
+- When override is active: "AI Engine: GPT-4o · ✕ Reset to auto"
+- `aiProvider`/`aiModel` become optional in `chatConfigSchema` — server defaults to `'auto'` sentinel
+- First message send triggers the evaluator/router to assign the actual model
+
+#### D2b — Active Chat Interface (ChatInterface)
+- Replace the `ModelRecommendationChip` prominent banner with a subtle pill below the input:
+  `⚡ Auto: Claude Sonnet 4.5  ·  Change model`
+- Clicking "Change model" slides in a compact inline model picker (not a modal)
+- Manual override state: `⚡ GPT-4o  ·  Manual override  ·  ✕ Reset`
+- `✕ Reset` clears `modelOverride` state → reverts to algorithm selection on next message
+- `PromptSuggestionBanner` (low-score prompts) remains separate and unchanged
+
+**Key principle: Auto is the default, override is the exception.**
+
+---
+
+### D3 — UI/UX Sprint (D-Series) — Sourced from InquiroAI-UIUX-Review.md
+
+**Goal:** Elevate InquiroAI from "working prototype" to premium $20/month tool. Fix the three biggest friction points: cognitive overload in forms, flat interactions, and buried navigation.
+
+**Priority order:** D2 (hover states) → D3 (chat header) → D1 (form tabs) → D4 (tooltips) → D5 (dashboard resume) → D6 (a11y) → D7 (scroll) → D8 (empty state) → D9 (mobile)
+
+**Key decisions:**
+- D1: Replace single-scroll forms with tabbed architecture (Basics → Role → Context & Defaults → Advanced). Tabs retain data; validation errors auto-switch to offending tab.
+- D2: All buttons get `scale-[1.02] shadow-md` hover, 200ms transition. Project cards "lift" with `ring-1 ring-purple-200`. AI Engine pill becomes a real interactive element (bg-purple-50, border, hover state).
+- D3: Role pill (blue-100) + model pill (purple-100) in chat header. Clicking role opens compact role-picker popover + calls PATCH /api/chats/:id. Project breadcrumb above title.
+- D7: Floating "↓ New message" button when user is 200px+ above bottom. Respects manual scroll intent during streaming.
+- D9: Mobile done last — requires D1 tabs to exist first. Sidebar as Sheet drawer on mobile.
+
+---
+
+### Build Status Update (as of 2026-03-25)
 
 | Layer | Feature | Status |
 |-------|---------|--------|
@@ -1651,3 +1719,21 @@ Two X buttons overlaid on the provider and model Select triggers:
 | Layer 4 | server/notionMemory.ts — classify + archive | ✅ Complete |
 | Layer 4 | POST /api/chats/:chatId/archive endpoint | ✅ Complete |
 | Layer 4 | Archive to Memory UI + auto-archive trigger | ✅ Complete |
+| UX | B8 — Streaming Responses (SSE) | ✅ Complete |
+| UX | B9 — Chat Search (title + message content, highlighted results dropdown) | ✅ Complete |
+| UX | B11 — Chat Rename (inline) + Drag-and-drop Reorder (framer-motion) | ✅ Complete |
+| UX | Landing page → /chat direct (no API key gate) | ✅ Complete |
+| UX | /chat/new project linking dropdown | ✅ Complete |
+| UX | Timestamp display — local browser time | ✅ Complete |
+| Sprint 3 | C1 — Remove role from Project forms | ✅ Complete |
+| Sprint 3 | C2 — Auto model selection: chat creation forms | ✅ Complete |
+| Sprint 3 | C3 — Auto model selection: active chat interface | ✅ Complete |
+| Sprint 3 — UI/UX | D1 — Tab-based form architecture (progressive disclosure) | ✅ Complete |
+| Sprint 3 — UI/UX | D2 — Micro-interactions & hover states | ✅ Complete |
+| Sprint 3 — UI/UX | D3 — Chat header redesign: role + model pills | ✅ Complete |
+| Sprint 3 — UI/UX | D4 — Form field tooltips & contextual help | 🔲 Pending |
+| Sprint 3 — UI/UX | D5 — Dashboard: Resume Work + project sorting | 🔲 Pending |
+| Sprint 3 — UI/UX | D6 — Accessibility fixes (contrast, focus rings, touch targets) | 🔲 Pending |
+| Sprint 3 — UI/UX | D7 — "Scroll to latest" button in chat | 🔲 Pending |
+| Sprint 3 — UI/UX | D8 — Empty state for new users | 🔲 Pending |
+| Sprint 3 — UI/UX | D9 — Mobile responsiveness: sidebar + forms | 🔲 Pending |
