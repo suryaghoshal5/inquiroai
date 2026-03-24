@@ -1,10 +1,13 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useLocation } from "wouter";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import {
   Share,
@@ -15,7 +18,6 @@ import {
   Paperclip,
   Send,
   MoreHorizontal,
-  Download,
   FileText,
   File,
   ChevronDown,
@@ -26,11 +28,18 @@ import {
   Link2,
   Bookmark,
   BookmarkCheck,
+  FolderOpen,
+  ChevronRight,
+  Network,
+  ArrowDown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import LinkToProjectModal from "@/components/LinkToProjectModal";
+import ModelPicker from "@/components/ModelPicker";
+import RoleSelector from "@/components/RoleSelector";
+import { apiRequest } from "@/lib/queryClient";
 import type { Chat, Message } from "@/types";
 import type { EvaluationData, RecommendationData, ContextStatus } from "@/pages/Chat";
 
@@ -39,6 +48,7 @@ interface ChatInterfaceProps {
   messages: Message[];
   onSendMessage: (content: string) => void;
   isLoading: boolean;
+  streamingMessage?: string | null;
   lastEvaluation?: EvaluationData | null;
   lastRecommendation?: RecommendationData | null;
   onModelOverride?: (model: string | null) => void;
@@ -46,6 +56,11 @@ interface ChatInterfaceProps {
   contextStatus?: ContextStatus | null;
   onArchive?: () => void;
   isArchiving?: boolean;
+  onExtractGraph?: () => void;
+  isExtractingGraph?: boolean;
+  obsidianVaultConfigured?: boolean;
+  projectName?: string;
+  projectId?: number;
 }
 
 export default function ChatInterface({
@@ -53,6 +68,7 @@ export default function ChatInterface({
   messages,
   onSendMessage,
   isLoading,
+  streamingMessage,
   lastEvaluation,
   lastRecommendation,
   onModelOverride,
@@ -60,22 +76,76 @@ export default function ChatInterface({
   contextStatus,
   onArchive,
   isArchiving,
+  onExtractGraph,
+  isExtractingGraph,
+  obsidianVaultConfigured,
+  projectName,
+  projectId,
 }: ChatInterfaceProps) {
+  const [, navigate] = useLocation();
+  const queryClient = useQueryClient();
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [bannerVisible, setBannerVisible] = useState(false);
   const [bannerExpanded, setBannerExpanded] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
+  const [showInlineModelPicker, setShowInlineModelPicker] = useState(false);
+  const [inlinePickerProvider, setInlinePickerProvider] = useState("");
+  const [inlinePickerModel, setInlinePickerModel] = useState("");
+  const [rolePopoverOpen, setRolePopoverOpen] = useState(false);
+  const [localRole, setLocalRole] = useState(chat.role);
+  const [localCustomRole, setLocalCustomRole] = useState(chat.customRole ?? "");
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const userScrolledUpRef = useRef(false);
+
+  const roleMutation = useMutation({
+    mutationFn: async (newRole: string) => {
+      const res = await apiRequest("PATCH", `/api/chats/${chat.id}`, { role: newRole });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/chats/${chat.id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/chats"] });
+    },
+    onError: () => {
+      toast({ title: "Could not update role", variant: "destructive" });
+    },
+  });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bannerDismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive (unless user scrolled up)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (!userScrolledUpRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
+
+  // Auto-scroll during streaming (unless user manually scrolled up)
+  useEffect(() => {
+    if (isLoading && !userScrolledUpRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [streamingMessage, isLoading]);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const isNearBottom = distanceFromBottom < 200;
+    userScrolledUpRef.current = !isNearBottom;
+    setShowScrollButton(!isNearBottom);
+  }, []);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    userScrolledUpRef.current = false;
+    setShowScrollButton(false);
+  };
 
   // Auto-resize textarea
   useEffect(() => {
@@ -191,10 +261,13 @@ export default function ChatInterface({
   };
 
   const formatTime = (date: Date) => {
-    return new Date(date).toLocaleTimeString('en-US', {
+    // DB stores local time but JSON serialization appends Z (UTC marker).
+    // Strip it so the browser treats the value as local time directly.
+    const raw = typeof date === 'string' ? (date as string).replace(/Z$/, '') : date;
+    return new Date(raw).toLocaleTimeString(undefined, {
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
     });
   };
 
@@ -243,24 +316,67 @@ export default function ChatInterface({
   return (
     <div className="flex-1 flex flex-col">
       {/* Chat Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200 p-6">
+      <div className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center role-${chat.role.replace('_', '-')}`}>
-              {getRoleIcon(chat.role)}
+          <div className="flex items-center space-x-4 min-w-0">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 role-${localRole.replace('_', '-')}`}>
+              {getRoleIcon(localRole)}
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">{chat.title}</h3>
-              <p className="text-sm text-gray-500">
-                {chat.role === 'custom' ? chat.customRole : chat.role.replace('_', ' ')} • 
-                <span className="text-green-600 ml-1">{chat.aiModel}</span>
-              </p>
+            <div className="min-w-0">
+              {/* Project breadcrumb */}
+              {projectName && (
+                <button
+                  onClick={() => projectId && navigate(`/projects/${projectId}`)}
+                  className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 transition-colors mb-0.5"
+                >
+                  <FolderOpen className="w-3 h-3" />
+                  <span>{projectName}</span>
+                  <ChevronRight className="w-3 h-3" />
+                </button>
+              )}
+              <h3 className="text-base font-semibold text-gray-900 truncate">{chat.title}</h3>
+              {/* Role pill + model pill */}
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                {/* Role pill — clicking opens popover to change role */}
+                <Popover open={rolePopoverOpen} onOpenChange={setRolePopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <button className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 transition-colors cursor-pointer">
+                      {localRole === 'custom' ? (localCustomRole || 'Custom') : localRole.replace(/_/g, ' ')}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[480px] p-4" align="start">
+                    <p className="text-xs font-medium text-gray-500 mb-3">Change role for this chat</p>
+                    <RoleSelector
+                      value={localRole}
+                      onChange={(newRole) => {
+                        setLocalRole(newRole);
+                        roleMutation.mutate(newRole);
+                        setRolePopoverOpen(false);
+                        toast({ title: "Role updated", description: `Switched to ${newRole.replace(/_/g, ' ')}` });
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                {/* Model pill — clicking scrolls to/toggles inline model picker */}
+                <button
+                  onClick={() => setShowInlineModelPicker(v => !v)}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 border border-purple-200 hover:bg-purple-200 transition-colors cursor-pointer"
+                >
+                  <Cpu className="w-3 h-3" />
+                  {currentModelOverride
+                    ? (currentModelOverride.includes("/") ? currentModelOverride.slice(currentModelOverride.indexOf("/") + 1) : currentModelOverride)
+                    : (chat.aiModel?.includes("/") ? chat.aiModel.slice(chat.aiModel.indexOf("/") + 1) : (chat.aiModel || "Auto"))
+                  }
+                  {currentModelOverride && <span className="text-purple-500 ml-0.5">·override</span>}
+                </button>
+              </div>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 shrink-0">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" title="Share Chat">
+                <Button variant="ghost" size="sm" title="Export Chat" className="hover:scale-[1.02] transition-all duration-200">
                   <Share className="w-4 h-4 text-gray-500" />
                 </Button>
               </DropdownMenuTrigger>
@@ -279,10 +395,10 @@ export default function ChatInterface({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            
+
             <Dialog open={showSettings} onOpenChange={setShowSettings}>
               <DialogTrigger asChild>
-                <Button variant="ghost" size="sm" title="Chat Settings">
+                <Button variant="ghost" size="sm" title="Chat Settings" className="hover:scale-[1.02] transition-all duration-200">
                   <Settings className="w-4 h-4 text-gray-500" />
                 </Button>
               </DialogTrigger>
@@ -356,7 +472,7 @@ export default function ChatInterface({
               size="sm"
               title={chat.projectId ? "Move to another project" : "Link to project"}
               onClick={() => setShowLinkModal(true)}
-              className="flex items-center gap-1.5 text-gray-500 hover:text-blue-600"
+              className="flex items-center gap-1.5 text-gray-500 hover:text-blue-600 hover:scale-[1.02] transition-all duration-200"
             >
               <Link2 className="w-4 h-4" />
             </Button>
@@ -368,7 +484,7 @@ export default function ChatInterface({
                 title={chat.archivedAt ? "Already archived to Notion" : "Archive to Memory (Notion)"}
                 onClick={onArchive}
                 disabled={isArchiving}
-                className={`flex items-center gap-1.5 ${chat.archivedAt ? "text-green-600" : "text-gray-500 hover:text-purple-600"}`}
+                className={`flex items-center gap-1.5 hover:scale-[1.02] transition-all duration-200 ${chat.archivedAt ? "text-green-600" : "text-gray-500 hover:text-purple-600"}`}
               >
                 {chat.archivedAt ? (
                   <BookmarkCheck className="w-4 h-4" />
@@ -378,7 +494,18 @@ export default function ChatInterface({
               </Button>
             )}
 
-            <Button variant="ghost" size="sm">
+            <Button
+              variant="ghost"
+              size="sm"
+              title={obsidianVaultConfigured ? "Extract to Obsidian Knowledge Graph" : "Extract to Graph (configure vault in Settings first)"}
+              onClick={onExtractGraph ?? (() => {})}
+              disabled={isExtractingGraph}
+              className={`flex items-center gap-1.5 hover:scale-[1.02] transition-all duration-200 ${obsidianVaultConfigured ? "text-gray-500 hover:text-violet-600" : "text-gray-300"}`}
+            >
+              <Network className={`w-4 h-4 ${isExtractingGraph ? "animate-pulse" : ""}`} />
+            </Button>
+
+            <Button variant="ghost" size="sm" className="hover:scale-[1.02] transition-all duration-200">
               <MoreHorizontal className="w-4 h-4 text-gray-500" />
             </Button>
           </div>
@@ -395,7 +522,11 @@ export default function ChatInterface({
       />
 
       {/* Messages Area */}
-      <ScrollArea className="flex-1 p-6">
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto p-6"
+      >
         <div className="space-y-6 max-w-4xl mx-auto">
           {messages.map((message) => (
             <div
@@ -471,7 +602,7 @@ export default function ChatInterface({
                   </div>
                 </div>
                 <div className={`mt-2 flex items-center ${message.role === 'user' ? 'justify-end' : 'justify-between'}`}>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-gray-600">
                     {formatTime(message.createdAt)}
                     {message.role === 'assistant' && message.metadata?.model && (
                       <span className="ml-2 text-green-600">• {message.metadata.model}</span>
@@ -511,8 +642,8 @@ export default function ChatInterface({
             </div>
           ))}
 
-          {/* Typing Indicator */}
-          {isLoading && (
+          {/* Typing indicator — shown while waiting for the first token */}
+          {isLoading && !streamingMessage && (
             <div className="flex justify-start">
               <div className="max-w-3xl">
                 <div className="bg-gray-100 rounded-2xl rounded-bl-md p-4 shadow-sm">
@@ -529,9 +660,63 @@ export default function ChatInterface({
             </div>
           )}
 
+          {/* Streaming bubble — progressively rendered as tokens arrive */}
+          {streamingMessage && (
+            <div className="flex justify-start">
+              <div className="max-w-3xl">
+                <div className="bg-gray-50 border border-gray-200 text-gray-900 rounded-2xl rounded-bl-md p-4 shadow-sm">
+                  <div className="text-sm leading-relaxed">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        h1: ({children}) => <h1 className="text-xl font-bold text-gray-900 mt-4 mb-2 first:mt-0 border-b border-gray-200 pb-1">{children}</h1>,
+                        h2: ({children}) => <h2 className="text-lg font-semibold text-gray-900 mt-4 mb-2 first:mt-0">{children}</h2>,
+                        h3: ({children}) => <h3 className="text-base font-semibold text-gray-900 mt-3 mb-1 first:mt-0">{children}</h3>,
+                        p: ({children}) => <p className="text-gray-700 mb-3 last:mb-0 leading-relaxed">{children}</p>,
+                        ul: ({children}) => <ul className="list-disc pl-5 mb-3 text-gray-700 space-y-1">{children}</ul>,
+                        ol: ({children}) => <ol className="list-decimal pl-5 mb-3 text-gray-700 space-y-1">{children}</ol>,
+                        li: ({children}) => <li className="text-gray-700 leading-relaxed">{children}</li>,
+                        code: ({className, children}) => {
+                          const isInline = !className;
+                          return isInline
+                            ? <code className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-xs font-mono border border-blue-100">{children}</code>
+                            : <code className={`font-mono text-xs text-gray-800 ${className ?? ''}`}>{children}</code>;
+                        },
+                        pre: ({children}) => (
+                          <pre className="bg-gray-900 text-gray-100 p-4 rounded-xl overflow-x-auto mb-3 text-xs font-mono leading-relaxed border border-gray-700">
+                            {children}
+                          </pre>
+                        ),
+                        strong: ({children}) => <strong className="font-semibold text-gray-900">{children}</strong>,
+                        a: ({href, children}) => (
+                          <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">{children}</a>
+                        ),
+                      }}
+                    >
+                      {streamingMessage}
+                    </ReactMarkdown>
+                    {/* Blinking cursor at end of stream */}
+                    <span className="inline-block w-0.5 h-4 ml-0.5 bg-gray-500 animate-pulse align-middle" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div ref={messagesEndRef} />
         </div>
-      </ScrollArea>
+      </div>
+
+      {/* Scroll to latest floating button */}
+      {showScrollButton && (
+        <button
+          onClick={scrollToBottom}
+          className="fixed bottom-24 right-6 z-50 flex items-center gap-2 bg-purple-600 text-white rounded-full px-4 py-2 shadow-lg text-sm hover:bg-purple-700 hover:scale-[1.02] transition-all duration-200"
+        >
+          <ArrowDown className="w-4 h-4" />
+          {isLoading ? "Streaming…" : "New message"}
+        </button>
+      )}
 
       {/* Input Area */}
       <div className="bg-white border-t border-gray-200 p-6">
@@ -680,16 +865,73 @@ export default function ChatInterface({
             </div>
           )}
 
-          {/* Model override indicator */}
-          {currentModelOverride && (
-            <div className="mb-2 flex items-center gap-2 text-xs text-blue-600">
-              <Cpu className="w-3 h-3" />
-              <span>Next message will use: <span className="font-medium">{currentModelOverride}</span></span>
-              {onModelOverride && (
-                <button onClick={() => onModelOverride(null)} className="text-gray-400 hover:text-gray-600">
-                  <X className="w-3 h-3" />
+          {/* Model status pill */}
+          <div className="mb-2">
+            {currentModelOverride ? (
+              /* Manual override active */
+              <span className="inline-flex items-center gap-1.5 text-xs text-gray-500 px-2 py-1 rounded-full bg-gray-100 hover:bg-gray-200">
+                <Cpu className="w-3 h-3 text-blue-500" />
+                ⚡ {currentModelOverride.includes("/") ? currentModelOverride.slice(currentModelOverride.indexOf("/") + 1) : currentModelOverride}
+                <span className="text-gray-400">· Manual override</span>
+                {onModelOverride && (
+                  <button
+                    onClick={() => onModelOverride(null)}
+                    className="ml-0.5 text-gray-400 hover:text-red-500 transition-colors"
+                    title="Reset to auto"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </span>
+            ) : (
+              /* Auto mode — show recommendation if available, else generic */
+              <button
+                type="button"
+                onClick={() => setShowInlineModelPicker(v => !v)}
+                className="inline-flex items-center gap-1.5 text-xs text-gray-500 px-2 py-1 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                <Cpu className={`w-3 h-3 ${lastRecommendation ? "text-green-500" : "text-gray-400"}`} />
+                {lastRecommendation
+                  ? <>⚡ Auto: {lastRecommendation.display_name}</>
+                  : <>⚡ AI Engine: Auto</>
+                }
+                <span className="text-gray-400 underline">· Change model</span>
+              </button>
+            )}
+          </div>
+
+          {/* Inline model picker — appears when user clicks "Change model" */}
+          {showInlineModelPicker && !currentModelOverride && onModelOverride && (
+            <div className="mb-3 rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-gray-600 flex items-center gap-1.5">
+                  <Cpu className="w-3 h-3" /> Override AI model for next message
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setShowInlineModelPicker(false); setInlinePickerProvider(""); setInlinePickerModel(""); }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-3.5 h-3.5" />
                 </button>
-              )}
+              </div>
+              <ModelPicker
+                provider={inlinePickerProvider}
+                model={inlinePickerModel}
+                onProviderChange={setInlinePickerProvider}
+                onModelChange={(m) => {
+                  setInlinePickerModel(m);
+                  if (m) {
+                    onModelOverride(m);
+                    setShowInlineModelPicker(false);
+                    setInlinePickerProvider("");
+                    setInlinePickerModel("");
+                    toast({ title: "Model override set", description: `Next message will use ${m.includes("/") ? m.slice(m.indexOf("/") + 1) : m}` });
+                  }
+                }}
+                providerPlaceholder="Select provider"
+                modelPlaceholder="Select model"
+              />
             </div>
           )}
 

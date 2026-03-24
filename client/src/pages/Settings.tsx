@@ -1,18 +1,48 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import { useToast } from "@/hooks/use-toast";
 import ApiKeyManager from "@/components/ApiKeyManager";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Key, User, Settings as SettingsIcon, Shield } from "lucide-react";
+import { ArrowLeft, Key, User, Settings as SettingsIcon, Shield, BookMarked, ExternalLink } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Settings() {
   const [, navigate] = useLocation();
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
+
+  const [vaultPath, setVaultPath] = useState("");
+  const [vaultPathSaving, setVaultPathSaving] = useState(false);
+
+  // Load current vault path setting
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    apiRequest("GET", "/api/user/settings")
+      .then(r => r.json())
+      .then(data => setVaultPath(data.obsidianVaultPath ?? ""))
+      .catch(() => {});
+  }, [isAuthenticated]);
+
+  const saveVaultPath = async () => {
+    setVaultPathSaving(true);
+    try {
+      await apiRequest("PATCH", "/api/user/settings", { obsidianVaultPath: vaultPath });
+      toast({ title: "Vault path saved", description: vaultPath || "Cleared" });
+    } catch (err: any) {
+      const msg = await err?.response?.json().catch(() => null);
+      toast({
+        title: "Could not save vault path",
+        description: msg?.message ?? "Check the path exists and is readable.",
+        variant: "destructive",
+      });
+    } finally {
+      setVaultPathSaving(false);
+    }
+  };
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -220,6 +250,58 @@ export default function Settings() {
                           </div>
                           <div className="text-blue-600 font-medium">Light</div>
                         </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                        <BookMarked className="w-5 h-5 text-purple-600" />
+                        Obsidian Knowledge Graph
+                      </h3>
+                      <p className="text-sm text-gray-500 mb-4">
+                        Set your Obsidian vault path to enable "Extract to Graph" — AI-extracted entities from each chat will be written as interconnected Markdown notes in your vault.
+                      </p>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Vault folder path
+                          </label>
+                          <div className="flex gap-2">
+                            <Input
+                              value={vaultPath}
+                              onChange={e => setVaultPath(e.target.value)}
+                              onBlur={e => {
+                                const cleaned = e.target.value.trim().replace(/^(['"])(.*)\1$/, "$2").trim();
+                                setVaultPath(cleaned);
+                              }}
+                              placeholder="/Users/you/Documents/InquiroAI"
+                              className="font-mono text-sm"
+                            />
+                            <Button
+                              onClick={saveVaultPath}
+                              disabled={vaultPathSaving}
+                              className="shrink-0 bg-purple-600 hover:bg-purple-700 text-white"
+                            >
+                              {vaultPathSaving ? "Saving..." : "Save"}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1">
+                            Paste the absolute path to your Obsidian vault folder. Subfolders (decisions/, concepts/, etc.) will be created automatically.
+                          </p>
+                        </div>
+                        {vaultPath && (
+                          <div className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-lg text-sm">
+                            <BookMarked className="w-4 h-4 text-purple-600 shrink-0" />
+                            <span className="text-purple-800 font-mono truncate">{vaultPath}</span>
+                            <a
+                              href={`obsidian://open?path=${encodeURIComponent(vaultPath)}`}
+                              className="ml-auto text-purple-600 hover:text-purple-800 shrink-0 flex items-center gap-1"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              Open
+                            </a>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

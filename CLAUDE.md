@@ -1731,9 +1731,13 @@ Forcing a project-level role creates a false constraint. The `role`/`customRole`
 | Sprint 3 — UI/UX | D1 — Tab-based form architecture (progressive disclosure) | ✅ Complete |
 | Sprint 3 — UI/UX | D2 — Micro-interactions & hover states | ✅ Complete |
 | Sprint 3 — UI/UX | D3 — Chat header redesign: role + model pills | ✅ Complete |
-| Sprint 3 — UI/UX | D4 — Form field tooltips & contextual help | 🔲 Pending |
-| Sprint 3 — UI/UX | D5 — Dashboard: Resume Work + project sorting | 🔲 Pending |
-| Sprint 3 — UI/UX | D6 — Accessibility fixes (contrast, focus rings, touch targets) | 🔲 Pending |
-| Sprint 3 — UI/UX | D7 — "Scroll to latest" button in chat | 🔲 Pending |
-| Sprint 3 — UI/UX | D8 — Empty state for new users | 🔲 Pending |
-| Sprint 3 — UI/UX | D9 — Mobile responsiveness: sidebar + forms | 🔲 Pending |
+| Layer 5 | B4 — server/obsidianGraph.ts — entity extraction via Haiku | ✅ Complete |
+| Layer 5 | B5 — server/obsidianWriter.ts — vault writer + bootstrapVault | ✅ Complete |
+| Layer 5 | B6 — obsidianVaultPath on users table + /extract-graph endpoint + user settings API | ✅ Complete |
+| Layer 5 | B7 — Extract to Graph button in ChatInterface.tsx + Chat.tsx wiring | ✅ Complete |
+| Sprint 3 — UI/UX | D4 — Form field tooltips & contextual help | ✅ Complete |
+| Sprint 3 — UI/UX | D5 — Dashboard: Resume Work + project sorting | ✅ Complete |
+| Sprint 3 — UI/UX | D6 — Accessibility fixes (contrast, focus rings, touch targets) | ✅ Complete |
+| Sprint 3 — UI/UX | D7 — "Scroll to latest" button in chat | ✅ Complete |
+| Sprint 3 — UI/UX | D8 — Empty state for new users | ✅ Complete |
+| Sprint 3 — UI/UX | D9 — Mobile responsiveness: sidebar + forms | ✅ Complete |

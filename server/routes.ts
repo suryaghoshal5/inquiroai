@@ -11,6 +11,8 @@ import { evaluatePrompt } from "./promptEvaluator";
 import { recommendModel } from "./modelRouter";
 import { manageContext, estimateMessagesTokens, estimateTokens } from "./contextManager";
 import { classifyAndArchiveChat } from "./notionMemory";
+import { extractEntities } from "./obsidianGraph";
+import { writeEntitiesToVault } from "./obsidianWriter";
 import { db } from "./db";
 import { eq, and, desc, ilike, inArray, or } from "drizzle-orm";
 import { z } from "zod";
@@ -909,6 +911,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         archivedAt: new Date(),
       });
 
+      // Chain: auto-extract to Obsidian graph if vault path is configured (fire-and-forget)
+      const user = await storage.getUser(userId);
+      const vaultPath = user?.obsidianVaultPath ?? process.env.OBSIDIAN_VAULT_PATH;
+      if (vaultPath) {
+        extractEntities(messages, entry.project).then(({ entities }) => {
+          if (entities.length > 0) {
+            writeEntitiesToVault(vaultPath, entities, chatId).catch(() => {});
+          }
+        }).catch(() => {});
+      }
+
       res.json(entry);
     } catch (error: any) {
       console.error("Error archiving chat:", error);
@@ -918,6 +931,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ─── End Layer 4 ──────────────────────────────────────────────────────────
+
+  // ─── Layer 5: Obsidian Knowledge Graph ────────────────────────────────────
+
+  // POST /api/chats/:chatId/extract-graph — extract entities + write to Obsidian vault
+  app.post('/api/chats/:chatId/extract-graph', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const chatId = parseInt(req.params.chatId);
+
+      const chat = await storage.getChat(chatId);
+      if (!chat || chat.userId !== userId) {
+        return res.status(404).json({ message: "Chat not found" });
+      }
+
+      const chatMessages = await storage.getChatMessages(chatId);
+      if (chatMessages.length === 0) {
+        return res.status(400).json({ message: "No messages to extract" });
+      }
+
+      const messages = chatMessages.map(m => ({
+        role: m.role as 'user' | 'assistant' | 'system',
+        content: m.content,
+      }));
+
+      // Resolve project name
+      let projectName: string | undefined;
+      if (chat.projectId) {
+        const [project] = await db.select().from(projects)
+          .where(eq(projects.id, chat.projectId));
+        projectName = project?.name;
+      }
+
+      const { entities } = await extractEntities(messages, projectName);
+
+      if (entities.length === 0) {
+        return res.json({ entities_created: 0, entities_updated: 0, entities });
+      }
+
+      // Determine vault path: user setting > env fallback
+      const user = await storage.getUser(userId);
+      const vaultPath = user?.obsidianVaultPath ?? process.env.OBSIDIAN_VAULT_PATH;
+
+      let entities_created = 0;
+      let entities_updated = 0;
+
+      if (vaultPath) {
+        const result = await writeEntitiesToVault(vaultPath, entities, chatId);
+        entities_created = result.created;
+        entities_updated = result.updated;
+      }
+
+      res.json({ entities_created, entities_updated, entities, vault_configured: !!vaultPath });
+    } catch (error: any) {
+      console.error("Error extracting graph:", error);
+      res.status(500).json({ message: "Failed to extract graph", error: error.message });
+    }
+  });
+
+  // ─── User Settings ─────────────────────────────────────────────────────────
+
+  // GET /api/user/settings — get current user settings
+  app.get('/api/user/settings', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      res.json({ obsidianVaultPath: user.obsidianVaultPath ?? '' });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to get settings" });
+    }
+  });
+
+  // PATCH /api/user/settings — update user settings (obsidian vault path, etc.)
+  app.patch('/api/user/settings', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { obsidianVaultPath } = req.body as { obsidianVaultPath?: string };
+
+      const updates: Partial<{ obsidianVaultPath: string | null }> = {};
+
+      if (obsidianVaultPath !== undefined) {
+        const cleaned = obsidianVaultPath.trim().replace(/^(['"])(.*)\1$/, "$2").trim();
+        if (cleaned) {
+          // Verify folder is accessible
+          try {
+            await fs.access(cleaned);
+          } catch {
+            return res.status(400).json({
+              message: `Vault folder not accessible: ${cleaned}. Check the path and try again.`,
+            });
+          }
+          updates.obsidianVaultPath = cleaned;
+        } else {
+          updates.obsidianVaultPath = null;
+        }
+      }
+
+      const updated = await storage.updateUser(userId, updates as any);
+      res.json({ obsidianVaultPath: updated.obsidianVaultPath ?? '' });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to update settings", error: error.message });
+    }
+  });
+
+  // ─── End Layer 5 ──────────────────────────────────────────────────────────
 
   // ─── B9: Chat Search ───────────────────────────────────────────────────────
 

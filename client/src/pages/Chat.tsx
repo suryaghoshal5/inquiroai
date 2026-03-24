@@ -8,8 +8,12 @@ import { apiRequest } from "@/lib/queryClient";
 import ChatInterface from "@/components/ChatInterface";
 import ChatSidebar from "@/components/ChatSidebar";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Brain } from "lucide-react";
-import type { Chat, Message } from "@/types";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { ArrowLeft, Brain, Menu } from "lucide-react";
+import type { Chat, Message, Project } from "@/types";
+
+// Auto-archive a chat when navigating away if it has at least this many messages
+const AUTO_ARCHIVE_MIN_MESSAGES = 5;
 
 export interface EvaluationData {
   score: number;
@@ -44,7 +48,11 @@ export default function ChatPage() {
   const [lastRecommendation, setLastRecommendation] = useState<RecommendationData | null>(null);
   const [modelOverride, setModelOverride] = useState<string | null>(null);
   const [contextStatus, setContextStatus] = useState<ContextStatus | null>(null);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingContent, setStreamingContent] = useState<string | null>(null);
+  const [obsidianVaultConfigured, setObsidianVaultConfigured] = useState(false);
   const autoArchiveTriggered = useRef(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const chatId = parseInt(id || "0");
 
@@ -77,40 +85,94 @@ export default function ChatPage() {
     retry: false,
   });
 
-  const sendMessageMutation = useMutation({
-    mutationFn: async (content: string) => {
+  // Load vault config status once
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    apiRequest("GET", "/api/user/settings")
+      .then(r => r.json())
+      .then((data: { obsidianVaultPath?: string }) => setObsidianVaultConfigured(!!data.obsidianVaultPath))
+      .catch(() => {});
+  }, [isAuthenticated]);
+
+  const projectId = (chatData as any)?.chat?.projectId;
+  const { data: projectData } = useQuery<Project>({
+    queryKey: [`/api/projects/${projectId}`],
+    enabled: isAuthenticated && !!projectId,
+    retry: false,
+  });
+
+  const streamMessage = async (content: string) => {
+    setIsStreaming(true);
+    setStreamingContent(''); // empty string = show typing dots while waiting for first token
+    setLastEvaluation(null);
+    setLastRecommendation(null);
+
+    try {
       const body: { content: string; modelOverride?: string } = { content };
       if (modelOverride) body.modelOverride = modelOverride;
-      const response = await apiRequest("POST", `/api/chats/${chatId}/messages`, body);
-      return response.json();
-    },
-    onSuccess: (data) => {
-      // Store evaluation + recommendation for the banner
-      if (data.evaluation) setLastEvaluation(data.evaluation);
-      if (data.recommendation) setLastRecommendation(data.recommendation);
-      if (data.context_status) setContextStatus(data.context_status);
-      // Clear override after use
-      setModelOverride(null);
-      // Invalidate chat messages to refetch
-      queryClient.invalidateQueries({ queryKey: [`/api/chats/${chatId}`] });
-      queryClient.invalidateQueries({ queryKey: ["/api/chats"] });
-    },
-    onError: (error: any) => {
-      console.log("Chat error:", error);
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
+
+      const response = await fetch(`/api/chats/${chatId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        let msg = `${response.status}: Failed to send message`;
+        try { msg = JSON.parse(text).message || msg; } catch { /* use default */ }
+        if (response.status === 401) {
+          toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
+          setTimeout(() => { window.location.href = "/api/login"; }, 500);
+          return;
+        }
+        throw new Error(msg);
       }
-      
-      // Handle API key errors specifically
-      if (error.message && error.message.includes("API key")) {
+
+      if (!response.body) throw new Error('No response body');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr) continue;
+
+          let event: any;
+          try { event = JSON.parse(jsonStr); } catch { continue; }
+
+          if (event.type === 'metadata') {
+            if (event.evaluation) setLastEvaluation(event.evaluation);
+            if (event.recommendation) setLastRecommendation(event.recommendation);
+            if (event.context_status) setContextStatus(event.context_status);
+            setModelOverride(null);
+          } else if (event.type === 'token') {
+            setStreamingContent(prev => (prev ?? '') + event.token);
+          } else if (event.type === 'done') {
+            setStreamingContent(null);
+            queryClient.invalidateQueries({ queryKey: [`/api/chats/${chatId}`] });
+            queryClient.invalidateQueries({ queryKey: ["/api/chats"] });
+          } else if (event.type === 'error') {
+            throw new Error(event.error || 'Stream error');
+          }
+        }
+      }
+    } catch (error: any) {
+      setStreamingContent(null);
+      console.error("Stream error:", error);
+
+      if (error.message?.includes("API key")) {
         toast({
           title: "API Key Required",
           description: "Please add your API key in settings to continue chatting.",
@@ -123,14 +185,16 @@ export default function ChatPage() {
         });
         return;
       }
-      
+
       toast({
         title: "Error",
-        description: "Failed to send message. Please try again.",
+        description: error.message || "Failed to send message. Please try again.",
         variant: "destructive",
       });
-    },
-  });
+    } finally {
+      setIsStreaming(false);
+    }
+  };
 
   const archiveMutation = useMutation({
     mutationFn: async () => {
@@ -153,6 +217,45 @@ export default function ChatPage() {
     },
   });
 
+  const extractGraphMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/chats/${chatId}/extract-graph`, {});
+      return response.json();
+    },
+    onSuccess: (data) => {
+      const total = (data.entities_created ?? 0) + (data.entities_updated ?? 0);
+      if (!data.vault_configured) {
+        toast({
+          title: "Vault not configured",
+          description: "Entities extracted but no vault path set. Go to Settings → Preferences to configure Obsidian.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const typeCounts = (data.entities as Array<{ type: string }>)?.reduce(
+        (acc: Record<string, number>, e) => {
+          acc[e.type] = (acc[e.type] ?? 0) + 1;
+          return acc;
+        },
+        {}
+      ) ?? {};
+      const summary = Object.entries(typeCounts)
+        .map(([t, n]) => `${n} ${t.replace('_', ' ')}`)
+        .join(', ');
+      toast({
+        title: `Extracted ${total} ${total === 1 ? 'entity' : 'entities'}`,
+        description: summary || "Knowledge graph updated",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Extraction failed",
+        description: "Could not extract knowledge graph. Try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Auto-archive: when user navigates away from a chat with >5 messages that hasn't been archived
   useEffect(() => {
     return () => {
@@ -163,7 +266,7 @@ export default function ChatPage() {
         chat &&
         !chat.archivedAt &&
         messages &&
-        messages.length > 5
+        messages.length > AUTO_ARCHIVE_MIN_MESSAGES
       ) {
         autoArchiveTriggered.current = true;
         // Fire-and-forget — don't block navigation
@@ -173,9 +276,7 @@ export default function ChatPage() {
   }, [chatId, chatData]);
 
   const handleSendMessage = (content: string) => {
-    setLastEvaluation(null);
-    setLastRecommendation(null);
-    sendMessageMutation.mutate(content);
+    streamMessage(content);
   };
 
   const handleChatSelect = (chatId: number) => {
@@ -236,20 +337,42 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <ChatSidebar
-        chats={chats || []}
-        onChatSelect={handleChatSelect}
-        onNewChat={handleNewChat}
-        currentChatId={chatId}
-      />
+      {/* Sidebar — desktop only */}
+      <div className="hidden md:block">
+        <ChatSidebar
+          chats={chats || []}
+          onChatSelect={handleChatSelect}
+          onNewChat={handleNewChat}
+          currentChatId={chatId}
+        />
+      </div>
+
+      {/* Mobile sidebar via Sheet */}
+      <div className="md:hidden absolute top-3 left-3 z-50">
+        <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="sm" className="p-2">
+              <Menu className="w-5 h-5 text-gray-600" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0 w-80">
+            <ChatSidebar
+              chats={chats || []}
+              onChatSelect={(id) => { handleChatSelect(id); setMobileSidebarOpen(false); }}
+              onNewChat={() => { handleNewChat(); setMobileSidebarOpen(false); }}
+              currentChatId={chatId}
+            />
+          </SheetContent>
+        </Sheet>
+      </div>
 
       {/* Chat Interface */}
       <ChatInterface
         chat={chatData.chat}
         messages={chatData.messages}
         onSendMessage={handleSendMessage}
-        isLoading={sendMessageMutation.isPending}
+        isLoading={isStreaming}
+        streamingMessage={streamingContent}
         lastEvaluation={lastEvaluation}
         lastRecommendation={lastRecommendation}
         onModelOverride={setModelOverride}
@@ -257,6 +380,11 @@ export default function ChatPage() {
         contextStatus={contextStatus}
         onArchive={() => archiveMutation.mutate()}
         isArchiving={archiveMutation.isPending}
+        onExtractGraph={() => extractGraphMutation.mutate()}
+        isExtractingGraph={extractGraphMutation.isPending}
+        obsidianVaultConfigured={obsidianVaultConfigured}
+        projectName={projectData?.name}
+        projectId={projectData?.id}
       />
     </div>
   );
