@@ -60,7 +60,7 @@ const roleOptions = [
 
 export default function RoleSelector({ value, onChange }: RoleSelectorProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
       {roleOptions.map((role) => {
         const IconComponent = role.icon;
         const isSelected = value === role.value;
@@ -77,7 +77,7 @@ export default function RoleSelector({ value, onChange }: RoleSelectorProps) {
             />
             <label
               htmlFor={`role-${role.value}`}
-              className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 h-32 text-center ${
+              className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 h-32 text-center focus-within:ring-2 focus-within:ring-purple-500 focus-within:ring-offset-2 ${
                 isSelected
                   ? "border-blue-500 bg-blue-50"
                   : "border-gray-200 hover:border-blue-300"
@@ -89,7 +89,7 @@ export default function RoleSelector({ value, onChange }: RoleSelectorProps) {
               </div>
               <div>
                 <p className="font-medium text-gray-900 text-sm leading-snug">{role.label}</p>
-                <p className="text-xs text-gray-500 leading-snug">{role.description}</p>
+                <p className="text-xs text-gray-500 leading-5">{role.description}</p>
               </div>
             </label>
           </div>

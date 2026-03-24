@@ -8,8 +8,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Brain, Plus, MessageCircle, Settings, ArrowRight,
   FolderOpen, ChevronDown, ChevronRight, FolderPlus, Zap,
-  Bot, Search, Link2, X,
+  Bot, Search, Link2, X, Clock, SortAsc,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import LinkToProjectModal from "@/components/LinkToProjectModal";
 import type { Chat, Project } from "@/types";
@@ -47,6 +53,7 @@ export default function Dashboard() {
   const [debouncedQ, setDebouncedQ] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [linkingChat, setLinkingChat] = useState<Chat | null>(null);
+  const [projectSort, setProjectSort] = useState<"activity" | "alpha" | "created">("activity");
 
   const handleSearchChange = (val: string) => {
     setSearchTerm(val);
@@ -141,6 +148,30 @@ export default function Dashboard() {
 
   const isLoaded = !projectsLoading && !chatsLoading;
   const hasAnything = projects.length > 0 || quickChats.length > 0;
+
+  // Sort projects based on selected sort mode
+  const sortedProjects = [...filteredProjects].sort((a, b) => {
+    if (projectSort === "alpha") return a.name.localeCompare(b.name);
+    if (projectSort === "created") {
+      return new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime();
+    }
+    // "activity": sort by most recent chat message time
+    const aTime = Math.max(...(a.chats ?? []).map(c => new Date(c.lastMessageTime || c.updatedAt || 0).getTime()), new Date(a.updatedAt ?? 0).getTime());
+    const bTime = Math.max(...(b.chats ?? []).map(c => new Date(c.lastMessageTime || c.updatedAt || 0).getTime()), new Date(b.updatedAt ?? 0).getTime());
+    return bTime - aTime;
+  });
+
+  // Resume Work: 3 most-active projects with at least 1 chat
+  const resumeProjects = [...projects]
+    .filter(p => (p.chats ?? []).length > 0)
+    .sort((a, b) => {
+      const aTime = Math.max(...(a.chats ?? []).map(c => new Date(c.lastMessageTime || c.updatedAt || 0).getTime()));
+      const bTime = Math.max(...(b.chats ?? []).map(c => new Date(c.lastMessageTime || c.updatedAt || 0).getTime()));
+      return bTime - aTime;
+    })
+    .slice(0, 3);
+
+  const sortLabels: Record<string, string> = { activity: "Recently Active", alpha: "Alphabetical", created: "Date Created" };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -254,24 +285,101 @@ export default function Dashboard() {
           )}
         </div>
 
+        {/* Resume Work strip — top 3 most-active projects */}
+        {isLoaded && resumeProjects.length > 0 && !searchTerm && (
+          <section>
+            <h2 className="text-sm font-semibold text-gray-500 flex items-center gap-2 mb-3">
+              <Clock className="w-3.5 h-3.5" /> Resume Work
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {resumeProjects.map(project => {
+                const lastChat = [...(project.chats ?? [])].sort((a, b) =>
+                  new Date(b.lastMessageTime || b.updatedAt || 0).getTime() -
+                  new Date(a.lastMessageTime || a.updatedAt || 0).getTime()
+                )[0];
+                return (
+                  <button
+                    key={project.id}
+                    onClick={() => navigate(`/projects/${project.id}`)}
+                    className="text-left bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm hover:ring-1 hover:ring-purple-200 hover:shadow-md transition-all duration-200 group"
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className="w-6 h-6 gradient-bg rounded-md flex items-center justify-center shrink-0">
+                        <FolderOpen className="w-3 h-3 text-white" />
+                      </div>
+                      <p className="text-sm font-semibold text-gray-900 truncate">{project.name}</p>
+                    </div>
+                    {lastChat && (
+                      <p className="text-xs text-gray-400 truncate">{lastChat.title}</p>
+                    )}
+                    <p className="text-xs text-gray-300 mt-1">
+                      {lastChat ? formatTimeAgo(lastChat.lastMessageTime || lastChat.updatedAt) : ""}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* Empty state */}
         {isLoaded && !hasAnything && (
-          <div className="text-center py-20">
-            <div className="w-20 h-20 gradient-bg rounded-3xl flex items-center justify-center mx-auto mb-5">
-              <Brain className="w-10 h-10 text-white" />
+          <div className="py-12">
+            <div className="text-center mb-10">
+              <div className="w-20 h-20 gradient-bg rounded-3xl flex items-center justify-center mx-auto mb-5">
+                <Brain className="w-10 h-10 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to InquiroAI</h2>
+              <p className="text-gray-500 max-w-sm mx-auto">
+                Your AI operating system for domain experts. Start with a project to organise your work.
+              </p>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to InquiroAI</h2>
-            <p className="text-gray-500 mb-8 max-w-sm mx-auto">
-              Create a project to organise your AI conversations, or jump into a quick one-off chat.
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              {[
+                {
+                  emoji: "📊",
+                  title: "Research & Analysis",
+                  description: "Start a project for regulatory research, market analysis, or document review",
+                  role: "researcher",
+                },
+                {
+                  emoji: "🛠️",
+                  title: "Build & Code",
+                  description: "Create a project for development tasks, code review, and architecture planning",
+                  role: "developer",
+                },
+                {
+                  emoji: "✍️",
+                  title: "Content & Strategy",
+                  description: "Set up a project for content creation, PRDs, or strategic planning",
+                  role: "content_writer",
+                },
+              ].map(tile => (
+                <button
+                  key={tile.role}
+                  onClick={() => navigate(`/projects/new?role=${tile.role}`)}
+                  className="text-left bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:ring-1 hover:ring-purple-200 hover:shadow-md transition-all duration-200 group"
+                >
+                  <div className="text-3xl mb-3">{tile.emoji}</div>
+                  <h3 className="font-semibold text-gray-900 mb-1.5">{tile.title}</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed mb-4">{tile.description}</p>
+                  <span className="text-sm text-blue-600 font-medium group-hover:text-blue-700 flex items-center gap-1">
+                    Start this project <ArrowRight className="w-3.5 h-3.5" />
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <p className="text-center text-sm text-gray-400">
+              Or{" "}
+              <button
+                onClick={() => navigate("/chat/new")}
+                className="text-blue-500 hover:text-blue-700 underline"
+              >
+                start with a Quick Chat →
+              </button>
             </p>
-            <div className="flex items-center justify-center gap-3">
-              <Button onClick={() => navigate("/projects/new")} className="gradient-bg text-white px-6">
-                <FolderPlus className="w-4 h-4 mr-2" /> New Project
-              </Button>
-              <Button variant="outline" onClick={() => navigate("/chat/new")} className="px-6">
-                <Zap className="w-4 h-4 mr-2 text-amber-500" /> Quick Chat
-              </Button>
-            </div>
           </div>
         )}
 
@@ -283,9 +391,24 @@ export default function Dashboard() {
                 <FolderOpen className="w-4 h-4 text-blue-500" /> Projects
                 {!projectsLoading && <Badge variant="secondary">{projects.length}</Badge>}
               </h2>
-              <Button variant="ghost" size="sm" onClick={() => navigate("/projects/new")} className="text-blue-600 text-xs gap-1">
-                <Plus className="w-3.5 h-3.5" /> New Project
-              </Button>
+              <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-gray-500 text-xs gap-1 hover:text-gray-700">
+                      <SortAsc className="w-3.5 h-3.5" />
+                      {sortLabels[projectSort]}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setProjectSort("activity")}>Recently Active</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setProjectSort("alpha")}>Alphabetical</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setProjectSort("created")}>Date Created</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button variant="ghost" size="sm" onClick={() => navigate("/projects/new")} className="text-blue-600 text-xs gap-1">
+                  <Plus className="w-3.5 h-3.5" /> New Project
+                </Button>
+              </div>
             </div>
 
             {projectsLoading ? (
@@ -294,7 +417,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="space-y-3">
-                {filteredProjects.map(project => {
+                {sortedProjects.map(project => {
                   const projectChats = (project.chats ?? []).filter(c =>
                     filterText === "" || c.title.toLowerCase().includes(filterText)
                   );
@@ -352,7 +475,7 @@ export default function Dashboard() {
                             projectChats.map((chat, idx) => (
                               <div
                                 key={chat.id}
-                                className={`flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors group ${
+                                className={`flex items-center justify-between px-5 py-3 min-h-[40px] hover:bg-gray-50 transition-colors group ${
                                   idx < projectChats.length - 1 ? "border-b border-gray-50" : ""
                                 }`}
                               >
@@ -378,7 +501,7 @@ export default function Dashboard() {
                                   >
                                     <Link2 className="w-3 h-3" />
                                   </button>
-                                  <span className="text-xs text-gray-300">
+                                  <span className="text-xs text-gray-500">
                                     {formatTimeAgo(chat.lastMessageTime || chat.updatedAt)}
                                   </span>
                                   <ArrowRight
@@ -428,7 +551,7 @@ export default function Dashboard() {
                 {quickChats.map(chat => (
                   <div
                     key={chat.id}
-                    className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors group"
+                    className="flex items-center justify-between px-5 py-3.5 min-h-[40px] hover:bg-gray-50 transition-colors group"
                   >
                     {/* Clickable chat area */}
                     <div
@@ -456,7 +579,7 @@ export default function Dashboard() {
                         <Link2 className="w-3.5 h-3.5" />
                         <span className="hidden sm:inline">Link</span>
                       </button>
-                      <span className="text-xs text-gray-300">
+                      <span className="text-xs text-gray-500">
                         {formatTimeAgo(chat.lastMessageTime || chat.updatedAt)}
                       </span>
                       <ArrowRight

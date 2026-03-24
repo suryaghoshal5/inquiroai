@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ListTodo, Database, Bot, FolderOpen, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ListTodo, Database, Bot, FolderOpen, Plus, Trash2, X, HelpCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Project, ProjectFile } from "@/types";
 import FileBrowser from "@/components/FileBrowser";
 import ModelPicker from "@/components/ModelPicker";
@@ -34,6 +35,9 @@ export default function NewProjectChat() {
   const projectId = parseInt(params?.id ?? "0");
   const [showFileBrowser, setShowFileBrowser] = useState(false);
   const [taskItems, setTaskItems] = useState<string[]>([""]);
+  const [showModelOverride, setShowModelOverride] = useState(false);
+  const [overrideProvider, setOverrideProvider] = useState("");
+  const [overrideModel, setOverrideModel] = useState("");
 
   const { data: project } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
@@ -46,14 +50,19 @@ export default function NewProjectChat() {
       title: "",
       task: "",
       inputData: "",
-      aiProvider: project?.aiProvider ?? "",
-      aiModel: project?.aiModel ?? "",
+      aiProvider: undefined,
+      aiModel: undefined,
     },
   });
 
   const createMutation = useMutation({
     mutationFn: async (values: FormValues) => {
-      const res = await apiRequest("POST", `/api/projects/${projectId}/chats`, values);
+      const payload = {
+        ...values,
+        aiProvider: overrideModel ? (overrideProvider || undefined) : undefined,
+        aiModel: overrideModel || undefined,
+      };
+      const res = await apiRequest("POST", `/api/projects/${projectId}/chats`, payload);
       return res.json();
     },
     onSuccess: (chat) => {
@@ -135,6 +144,16 @@ export default function NewProjectChat() {
                 <div className="flex items-center justify-between mb-3">
                   <FormLabel className="font-semibold flex items-center gap-2 mb-0">
                     <ListTodo className="w-4 h-4 text-blue-600" /> Task *
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-[280px] text-xs">
+                          What you want done this session. E.g. "Map PMLA 2002 obligations to our data model."
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </FormLabel>
                 </div>
                 <div className="space-y-2">
@@ -181,6 +200,16 @@ export default function NewProjectChat() {
                     <FormLabel className="font-semibold flex items-center gap-2">
                       <Database className="w-4 h-4 text-blue-600" /> Input Data
                       <span className="text-gray-400 font-normal">(optional)</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <HelpCircle className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[280px] text-xs">
+                            Paste or upload data to analyze this session. Not saved to project defaults.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </FormLabel>
                     <FormControl>
                       <Textarea placeholder="Paste data, or attach files from the project folder below..." rows={4} {...field} className="rounded-xl resize-none" />
@@ -214,24 +243,70 @@ export default function NewProjectChat() {
               </CardContent>
             </Card>
 
-            {/* Model override */}
-            <Card>
-              <CardContent className="p-5 space-y-3">
+            {/* AI Engine — Auto by default (inherits from project), optional override */}
+            <div className="px-1">
+              {!showModelOverride && !overrideModel ? (
+                <button
+                  type="button"
+                  onClick={() => setShowModelOverride(true)}
+                  className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 cursor-pointer transition-colors"
+                >
+                  <Bot className="w-4 h-4" />
+                  {project?.aiModel ? (
+                    <span>⚡ {project.aiModel.includes("/") ? project.aiModel.slice(project.aiModel.indexOf("/") + 1) : project.aiModel} (project default) · <span className="underline">Override →</span></span>
+                  ) : (
+                    <span>⚡ AI Engine: Auto · <span className="underline">Override →</span></span>
+                  )}
+                </button>
+              ) : overrideModel ? (
                 <div className="flex items-center gap-2">
                   <Bot className="w-4 h-4 text-blue-600" />
-                  <span className="font-semibold text-gray-900 text-sm">AI Engine Override</span>
-                  <span className="text-xs text-gray-400">(optional — inherits from project)</span>
+                  <span className="text-sm text-blue-700 font-medium">
+                    ⚡ {overrideModel.includes("/") ? overrideModel.slice(overrideModel.indexOf("/") + 1) : overrideModel}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { setOverrideProvider(""); setOverrideModel(""); setShowModelOverride(false); }}
+                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                    Reset to {project?.aiModel ? "project default" : "auto"}
+                  </button>
                 </div>
-                <ModelPicker
-                  provider={form.watch("aiProvider") ?? ""}
-                  model={form.watch("aiModel") ?? ""}
-                  onProviderChange={v => form.setValue("aiProvider", v)}
-                  onModelChange={v => form.setValue("aiModel", v)}
-                  providerPlaceholder={project?.aiProvider ?? "Provider"}
-                  modelPlaceholder={project?.aiModel ?? "Model"}
-                />
-              </CardContent>
-            </Card>
+              ) : null}
+
+              {showModelOverride && !overrideModel && (
+                <Card className="mt-2">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Bot className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm font-semibold text-gray-900">AI Engine Override</span>
+                        <span className="text-xs text-gray-400">(optional)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowModelOverride(false)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <ModelPicker
+                      provider={overrideProvider}
+                      model={overrideModel}
+                      onProviderChange={setOverrideProvider}
+                      onModelChange={(m) => {
+                        setOverrideModel(m);
+                        if (m) setShowModelOverride(false);
+                      }}
+                      providerPlaceholder={project?.aiProvider ?? "Select provider"}
+                      modelPlaceholder={project?.aiModel ?? "Select model"}
+                    />
+                  </CardContent>
+                </Card>
+              )}
+            </div>
 
             <div className="flex justify-end">
               <Button
