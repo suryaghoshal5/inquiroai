@@ -15,9 +15,10 @@ export interface ProviderEntry {
   lastUpdated?: Date;
 }
 
+import { MODEL_CACHE_TTL_MS } from './config';
+
 let cachedModels: OpenRouterModel[] | null = null;
 let cacheTime = 0;
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // Human-readable display names for known provider prefixes
 const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
@@ -74,7 +75,7 @@ const PROVIDER_DEFAULTS: Record<string, string> = {
 
 export async function fetchOpenRouterModels(): Promise<OpenRouterModel[]> {
   const now = Date.now();
-  if (cachedModels && now - cacheTime < CACHE_TTL_MS) {
+  if (cachedModels && now - cacheTime < MODEL_CACHE_TTL_MS) {
     return cachedModels;
   }
 

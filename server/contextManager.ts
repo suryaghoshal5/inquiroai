@@ -1,5 +1,11 @@
 import { callAI } from './openrouter';
 import type { ChatMessage } from './openrouter';
+import {
+  COMPRESSION_THRESHOLD,
+  COMPRESSION_MODEL,
+  MESSAGES_KEPT_VERBATIM,
+  DEFAULT_CONTEXT_LIMIT,
+} from './config';
 
 export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
@@ -17,10 +23,8 @@ export const MODEL_CONTEXT_LIMITS: Record<string, number> = {
   'openai/gpt-4o-mini':          128000,
   'google/gemini-1.5-pro':       1000000,
   'google/gemini-1.5-flash':     1000000,
-  default:                        128000,
+  default:                        DEFAULT_CONTEXT_LIMIT,
 };
-
-export const COMPRESSION_THRESHOLD = 0.70;
 
 export interface ContextResult {
   messages: ChatMessage[];
@@ -51,9 +55,9 @@ export async function manageContext(
     };
   }
 
-  // Keep last 4 messages verbatim — highest signal
-  const recentMessages = messages.slice(-4);
-  const olderMessages = messages.slice(0, -4);
+  // Keep last N messages verbatim — highest signal
+  const recentMessages = messages.slice(-MESSAGES_KEPT_VERBATIM);
+  const olderMessages = messages.slice(0, -MESSAGES_KEPT_VERBATIM);
 
   if (olderMessages.length === 0) {
     return {
@@ -75,7 +79,7 @@ export async function manageContext(
         role: 'user',
         content: `Summarize this conversation concisely, preserving all key decisions, facts, and context:\n\n${conversationText}`,
       }],
-      'anthropic/claude-haiku-4-5',
+      COMPRESSION_MODEL,
       'You are a conversation summarizer. Create dense, factual summaries. Preserve decisions, numbers, names, and action items.'
     );
 

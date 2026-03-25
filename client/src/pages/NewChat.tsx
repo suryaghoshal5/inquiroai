@@ -1,19 +1,26 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import NewChatForm from "@/components/NewChatForm";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Brain } from "lucide-react";
-import type { ChatConfig } from "@/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Brain, FolderOpen } from "lucide-react";
+import type { ChatConfig, Project } from "@/types";
 
 export default function NewChat() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("none");
+
+  const { data: projects } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+    enabled: isAuthenticated,
+  });
 
   const createChatMutation = useMutation({
     mutationFn: async (config: ChatConfig) => {
@@ -56,7 +63,8 @@ export default function NewChat() {
   });
 
   const handleSubmit = (config: ChatConfig) => {
-    createChatMutation.mutate(config);
+    const projectId = selectedProjectId && selectedProjectId !== "none" ? parseInt(selectedProjectId) : undefined;
+    createChatMutation.mutate({ ...config, projectId });
   };
 
   const handleBack = () => {
@@ -108,6 +116,24 @@ export default function NewChat() {
               <p className="text-gray-600">Configure your AI conversation parameters</p>
             </div>
           </div>
+          {projects && projects.length > 0 && (
+            <div className="flex items-center gap-2">
+              <FolderOpen className="w-4 h-4 text-gray-500" />
+              <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                <SelectTrigger className="w-52">
+                  <SelectValue placeholder="Link to project (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No project (Quick Chat)</SelectItem>
+                  {projects.map((p) => (
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
       </div>
 

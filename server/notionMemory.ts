@@ -1,6 +1,11 @@
 import { Client } from '@notionhq/client';
 import { callAI } from './openrouter';
 import type { ChatMessage } from './openrouter';
+import {
+  NOTION_CLASSIFIER_MODEL,
+  NOTION_TRANSCRIPT_PREVIEW_CHARS,
+  NOTION_TRANSCRIPT_MAX_CHARS,
+} from './config';
 
 export interface ChatMemoryEntry {
   title: string;
@@ -34,16 +39,16 @@ export async function classifyAndArchiveChat(
   }
 ): Promise<ChatMemoryEntry> {
   const transcript = messages
-    .map(m => `${m.role.toUpperCase()}: ${m.content.slice(0, 500)}`)
+    .map(m => `${m.role.toUpperCase()}: ${m.content.slice(0, NOTION_TRANSCRIPT_PREVIEW_CHARS)}`)
     .join('\n\n')
-    .slice(0, 8000);
+    .slice(0, NOTION_TRANSCRIPT_MAX_CHARS);
 
   const classificationResult = await callAI(
     [{
       role: 'user',
       content: `Analyze this conversation and respond ONLY with valid JSON:\n\n${transcript}`,
     }],
-    'anthropic/claude-haiku-4-5',
+    NOTION_CLASSIFIER_MODEL,
     `You are a conversation classifier for a professional AI workspace. Respond ONLY with JSON matching exactly:
 {
   "title": "<concise descriptive title under 60 chars>",

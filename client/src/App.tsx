@@ -4,7 +4,6 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import Landing from "@/pages/Landing";
@@ -17,42 +16,13 @@ import NewProject from "@/pages/NewProject";
 import ProjectDashboard from "@/pages/ProjectDashboard";
 import EditProject from "@/pages/EditProject";
 import NewProjectChat from "@/pages/NewProjectChat";
-import type { ApiKey } from "@/types";
 
 function AuthenticatedHome() {
-  const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
 
-  const { data: apiKeys, isLoading: apiKeysLoading } = useQuery<ApiKey[]>({
-    queryKey: ["/api/api-keys"],
-    enabled: isAuthenticated,
-  });
-
   useEffect(() => {
-    if (isAuthenticated && !apiKeysLoading && apiKeys !== undefined) {
-      // If user has no API keys, redirect to settings first
-      if (apiKeys.length === 0) {
-        navigate("/settings");
-      } else {
-        // Land on the home dashboard
-        navigate("/chat");
-      }
-    }
-  }, [isAuthenticated, apiKeysLoading, apiKeys, navigate]);
-
-  // Show loading while checking API keys
-  if (apiKeysLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-16 h-16 gradient-bg rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
-            <i className="fas fa-brain text-white text-2xl"></i>
-          </div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+    navigate("/chat");
+  }, [navigate]);
 
   return null;
 }

@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { DEFAULT_PORT } from "./config";
 
 const app = express();
 app.use(express.json());
@@ -57,7 +58,7 @@ app.use((req, res, next) => {
   }
 
   // Port 5000 is reserved by macOS AirPlay locally — allow override via PORT env var
-  const port = parseInt(process.env.PORT || "5000");
+  const port = DEFAULT_PORT;
   const listenOpts: Record<string, unknown> = { port, host: "0.0.0.0" };
   // reusePort is Linux-only; skip on macOS to avoid ENOTSUP
   if (process.platform === "linux") listenOpts.reusePort = true;

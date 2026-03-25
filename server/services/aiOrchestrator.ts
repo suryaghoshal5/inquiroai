@@ -1,4 +1,4 @@
-import { callAI, type ChatMessage } from '../openrouter';
+import { callAI, streamAI, type ChatMessage, type AICallResult } from '../openrouter';
 import { getAllProviders, type ProviderEntry } from '../openrouter-models';
 
 export type { ProviderEntry as AIProvider };
@@ -78,6 +78,25 @@ export class AIOrchestrator {
       console.error(`OpenRouter generation error (${provider}/${model}):`, error);
       throw error;
     }
+  }
+
+  static async streamResponse(
+    _userId: string,
+    provider: string,
+    model: string,
+    systemPrompt: string,
+    context: string[],
+    onToken: (token: string) => void
+  ): Promise<AICallResult> {
+    const openRouterId = toOpenRouterModelId(provider, model);
+
+    const messages: ChatMessage[] = context.map((content, idx) => ({
+      role: (idx % 2 === 0 ? 'user' : 'assistant') as 'user' | 'assistant',
+      content,
+    }));
+
+    console.log(`Streaming OpenRouter — model: ${openRouterId}, context length: ${context.length}`);
+    return streamAI(messages, openRouterId, systemPrompt, onToken);
   }
 
   static async getAvailableProviders(): Promise<Record<string, ProviderEntry>> {

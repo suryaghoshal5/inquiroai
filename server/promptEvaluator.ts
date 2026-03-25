@@ -1,4 +1,5 @@
 import { callAI } from './openrouter';
+import { EVALUATOR_MODEL } from './config';
 
 export interface EvaluationResult {
   score: number;
@@ -42,7 +43,7 @@ export async function evaluatePrompt(prompt: string): Promise<EvaluationResult> 
   try {
     const result = await callAI(
       [{ role: 'user', content: `Evaluate this prompt:\n\n${prompt}` }],
-      'meta-llama/llama-3.1-8b-instruct',
+      EVALUATOR_MODEL,
       EVALUATOR_SYSTEM_PROMPT
     );
 
