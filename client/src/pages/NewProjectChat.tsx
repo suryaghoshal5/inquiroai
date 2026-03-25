@@ -16,6 +16,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import type { Project, ProjectFile } from "@/types";
 import FileBrowser from "@/components/FileBrowser";
 import ModelPicker from "@/components/ModelPicker";
+import TemplateLibrary, { type TemplateFields } from "@/components/TemplateLibrary";
 
 const schema = z.object({
   title: z.string().min(1, "Title is required").max(100),
@@ -88,6 +89,18 @@ export default function NewProjectChat() {
   const updateTask = (index: number, value: string) => syncTasks(taskItems.map((t, i) => (i === index ? value : t)));
   const removeTask = (index: number) => { if (taskItems.length > 1) syncTasks(taskItems.filter((_, i) => i !== index)); };
 
+  const applyTemplate = (fields: TemplateFields) => {
+    if (fields.task) {
+      form.setValue("task", fields.task);
+      const lines = fields.task.split("\n").filter(l => l.trim());
+      setTaskItems(lines.length > 0 ? lines : [""]);
+    }
+    if (fields.name && !form.getValues("title")) form.setValue("title", fields.name);
+    if (fields.aiProvider) setOverrideProvider(fields.aiProvider);
+    if (fields.aiModel)    setOverrideModel(fields.aiModel);
+    if (fields.aiProvider || fields.aiModel) setShowModelOverride(true);
+  };
+
   const handleFileAttach = (files: ProjectFile[], contents: string[]) => {
     const appended = contents.join("\n\n---\n\n");
     const current = form.getValues("inputData") ?? "";
@@ -155,6 +168,7 @@ export default function NewProjectChat() {
                       </Tooltip>
                     </TooltipProvider>
                   </FormLabel>
+                  <TemplateLibrary onUse={applyTemplate} triggerLabel="Templates" />
                 </div>
                 <div className="space-y-2">
                   {taskItems.map((item, index) => (

@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RoleSelector from "./RoleSelector";
 import FileUpload from "./FileUpload";
 import ModelPicker from "./ModelPicker";
+import TemplateLibrary, { type TemplateFields } from "./TemplateLibrary";
 import {
   Info,
   CheckCircle,
@@ -122,6 +123,29 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
     setShowModelOverride(false);
   };
 
+  const applyTemplate = (fields: TemplateFields) => {
+    const VALID_ROLES = ["researcher", "product_manager", "developer", "content_writer", "designer", "presales_consultant", "custom"] as const;
+    const role = VALID_ROLES.includes(fields.role as typeof VALID_ROLES[number]) ? fields.role as typeof VALID_ROLES[number] : "custom";
+    form.setValue("role", role);
+    if (fields.customRole) form.setValue("customRole", fields.customRole);
+    if (fields.context)    form.setValue("context", fields.context);
+    if (fields.task)       form.setValue("task", fields.task);
+    if (fields.constraints) form.setValue("constraints", fields.constraints);
+    if (fields.audience)   form.setValue("audience", fields.audience);
+    if (fields.examples)   form.setValue("examples", fields.examples);
+    if (fields.optional)   form.setValue("optional", fields.optional);
+    if (fields.name && !form.getValues("title")) form.setValue("title", fields.name);
+    if (fields.aiProvider) setOverrideProvider(fields.aiProvider);
+    if (fields.aiModel)    setOverrideModel(fields.aiModel);
+    if (fields.aiProvider || fields.aiModel) setShowModelOverride(true);
+    // Sync task items display
+    if (fields.task) {
+      const lines = fields.task.split("\n").filter(l => l.trim());
+      setTaskItems(lines.length > 0 ? lines : [""]);
+    }
+    setActiveTab("basics");
+  };
+
   const syncTasks = (items: string[]) => {
     setTaskItems(items);
     const combined = items
@@ -158,12 +182,15 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit, handleInvalidSubmit)} className="space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4 mb-6">
-            <TabsTrigger value="basics">Basics</TabsTrigger>
-            <TabsTrigger value="task">Task</TabsTrigger>
-            <TabsTrigger value="context">Context</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between mb-4">
+            <TabsList className="grid grid-cols-4 flex-1 mr-3">
+              <TabsTrigger value="basics">Basics</TabsTrigger>
+              <TabsTrigger value="task">Task</TabsTrigger>
+              <TabsTrigger value="context">Context</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
+            </TabsList>
+            <TemplateLibrary onUse={applyTemplate} />
+          </div>
 
           {/* ── Tab 1: Basics ── */}
           <TabsContent value="basics" className="space-y-6">
