@@ -13,12 +13,12 @@ async function get(path: string): Promise<{ status: number; body: unknown }> {
   return { status: res.status, body };
 }
 
-async function post(path: string, data: unknown): Promise<{ status: number; body: unknown }> {
+async function post(path: string, data: unknown, timeout = QA_CONFIG.timeout): Promise<{ status: number; body: unknown }> {
   const res = await fetch(`${QA_CONFIG.baseUrl}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    signal: AbortSignal.timeout(QA_CONFIG.timeout),
+    signal: AbortSignal.timeout(timeout),
   });
   const body = await res.json().catch(() => null);
   return { status: res.status, body };
@@ -173,7 +173,7 @@ export async function testHappyPath(): Promise<TestResult> {
       aiProvider: 'openai',
       aiModel: 'gpt-4o-mini',
     };
-    const { status, body } = await post('/api/chats', chatPayload);
+    const { status, body } = await post('/api/chats', chatPayload, 30_000);
     if (status !== 200 && status !== 201) {
       issues.push({
         title: 'POST /api/chats — unexpected status',

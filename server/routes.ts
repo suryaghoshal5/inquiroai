@@ -6,7 +6,8 @@ import { AIOrchestrator, AI_PROVIDERS } from "./services/aiOrchestrator";
 import { PromptService } from "./services/promptService";
 import { FileProcessor } from "./services/fileProcessor";
 import { CryptoService } from "./services/cryptoService";
-import { chatConfigSchema, insertMessageSchema, insertApiKeySchema, promptIntelligence, projects, chats, messages as messagesTable, projectConfigSchema } from "@shared/schema";
+import { chatConfigSchema, insertMessageSchema, insertApiKeySchema, promptIntelligence, projects, chats, messages as messagesTable, projectConfigSchema, projectFiles, chatFiles } from "@shared/schema";
+import { extractAndCache, getProjectFiles, invalidateFile } from "./services/fileCache";
 import { evaluatePrompt } from "./promptEvaluator";
 import { recommendModel } from "./modelRouter";
 import { manageContext, estimateMessagesTokens, estimateTokens } from "./contextManager";
@@ -14,7 +15,7 @@ import { classifyAndArchiveChat } from "./notionMemory";
 import { extractEntities } from "./obsidianGraph";
 import { writeEntitiesToVault } from "./obsidianWriter";
 import { db } from "./db";
-import { eq, and, desc, ilike, inArray, or } from "drizzle-orm";
+import { eq, and, desc, ilike, inArray, or, isNull } from "drizzle-orm";
 import { z } from "zod";
 import fs from "fs/promises";
 import path from "path";
@@ -269,7 +270,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aiModel: modelToUse,
         title: chat.title,
       };
-      systemPrompt = await PromptService.generatePrompt(chatConfig);
+      systemPrompt = await PromptService.generatePromptWithFiles(chatConfig, chatId);
 
       const rawMessages = chatMessages.map(m => ({
         role: m.role as 'user' | 'assistant' | 'system',
@@ -557,12 +558,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // File upload route
-  app.post('/api/upload', mockAuth, FileProcessor.getUploadMiddleware(), async (req: any, res) => {
+  app.post('/api/upload', mockAuth, (req: any, res: any, next: any) => {
+    FileProcessor.getUploadMiddleware()(req, res, (err: any) => {
+      if (err) {
+        // Convert multer errors to 400 (user errors, not server errors)
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ message: 'File too large. Maximum size is 10MB.' });
+        }
+        if (err.message === 'Unsupported file type') {
+          return res.status(400).json({ message: err.message });
+        }
+        return next(err);
+      }
+      next();
+    });
+  }, async (req: any, res: any) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
-      
+
       const content = await FileProcessor.processFile(req.file.path, req.file.originalname);
       res.json({ content, filename: req.file.originalname });
     } catch (error) {
@@ -1130,6 +1145,156 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ─── End B9 ────────────────────────────────────────────────────────────────
+
+  // ─── File Intelligence — Tier 1 (FI-T1.3) ─────────────────────────────────
+
+  // GET /api/projects/:id/files/cached — list project files with stale detection
+  // NOTE: registered before the wildcard GET /api/projects/:id/files/*
+  app.get('/api/projects/:id/files/cached', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const projectId = parseInt(req.params.id);
+      const [project] = await db.select().from(projects)
+        .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+      if (!project) return res.status(404).json({ message: "Project not found" });
+
+      const files = await getProjectFiles(projectId);
+      res.json(files);
+    } catch (error: any) {
+      console.error("Error listing cached files:", error);
+      res.status(500).json({ message: "Failed to list cached files" });
+    }
+  });
+
+  // POST /api/projects/:id/files/attach — extract + cache a file, return ProjectFile record
+  app.post('/api/projects/:id/files/attach', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const projectId = parseInt(req.params.id);
+      const { relativePath } = req.body as { relativePath?: string };
+
+      if (!relativePath) return res.status(400).json({ message: "relativePath is required" });
+
+      const [project] = await db.select().from(projects)
+        .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+      if (!project) return res.status(404).json({ message: "Project not found" });
+      if (!project.localFolderPath) return res.status(400).json({ message: "No local folder configured" });
+
+      const absolutePath = path.resolve(project.localFolderPath, relativePath);
+      const record = await extractAndCache(projectId, project.localFolderPath, absolutePath, relativePath);
+      res.json(record);
+    } catch (error: any) {
+      if (error.statusCode === 403) return res.status(403).json({ message: error.message });
+      console.error("Error attaching file:", error);
+      res.status(500).json({ message: "Failed to attach file" });
+    }
+  });
+
+  // DELETE /api/projects/:id/files/:fileId — soft-delete project file + detach from all chats
+  app.delete('/api/projects/:id/files/:fileId', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const projectId = parseInt(req.params.id);
+      const fileId = parseInt(req.params.fileId);
+
+      const [project] = await db.select().from(projects)
+        .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+      if (!project) return res.status(404).json({ message: "Project not found" });
+
+      await invalidateFile(fileId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting project file:", error);
+      res.status(500).json({ message: "Failed to delete file" });
+    }
+  });
+
+  // POST /api/chats/:chatId/files/attach — attach a cached project file to a chat
+  app.post('/api/chats/:chatId/files/attach', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const chatId = parseInt(req.params.chatId);
+      const { projectFileId } = req.body as { projectFileId?: number };
+
+      if (!projectFileId) return res.status(400).json({ message: "projectFileId is required" });
+
+      const chat = await storage.getChat(chatId);
+      if (!chat || chat.userId !== userId) return res.status(404).json({ message: "Chat not found" });
+
+      // Verify project file exists and is active
+      const [pf] = await db.select().from(projectFiles)
+        .where(and(eq(projectFiles.id, projectFileId), eq(projectFiles.isActive, true)));
+      if (!pf) return res.status(404).json({ message: "Project file not found" });
+
+      // Check if already attached (no detachedAt)
+      const [existing] = await db.select().from(chatFiles)
+        .where(and(
+          eq(chatFiles.chatId, chatId),
+          eq(chatFiles.projectFileId, projectFileId),
+          isNull(chatFiles.detachedAt),
+        ));
+
+      if (existing) {
+        // Already attached — return current list
+      } else {
+        await db.insert(chatFiles).values({ chatId, projectFileId });
+      }
+
+      const attached = await db.select({ chatFile: chatFiles, projectFile: projectFiles })
+        .from(chatFiles)
+        .innerJoin(projectFiles, eq(chatFiles.projectFileId, projectFiles.id))
+        .where(and(eq(chatFiles.chatId, chatId), isNull(chatFiles.detachedAt)));
+
+      res.json(attached);
+    } catch (error: any) {
+      console.error("Error attaching file to chat:", error);
+      res.status(500).json({ message: "Failed to attach file to chat" });
+    }
+  });
+
+  // DELETE /api/chats/:chatId/files/:chatFileId — detach file from chat (preserves project_files)
+  app.delete('/api/chats/:chatId/files/:chatFileId', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const chatId = parseInt(req.params.chatId);
+      const chatFileId = parseInt(req.params.chatFileId);
+
+      const chat = await storage.getChat(chatId);
+      if (!chat || chat.userId !== userId) return res.status(404).json({ message: "Chat not found" });
+
+      await db.update(chatFiles)
+        .set({ detachedAt: new Date() })
+        .where(and(eq(chatFiles.id, chatFileId), eq(chatFiles.chatId, chatId)));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error detaching file from chat:", error);
+      res.status(500).json({ message: "Failed to detach file" });
+    }
+  });
+
+  // GET /api/chats/:chatId/files — list files currently attached to a chat
+  app.get('/api/chats/:chatId/files', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const chatId = parseInt(req.params.chatId);
+
+      const chat = await storage.getChat(chatId);
+      if (!chat || chat.userId !== userId) return res.status(404).json({ message: "Chat not found" });
+
+      const attached = await db.select({ chatFile: chatFiles, projectFile: projectFiles })
+        .from(chatFiles)
+        .innerJoin(projectFiles, eq(chatFiles.projectFileId, projectFiles.id))
+        .where(and(eq(chatFiles.chatId, chatId), isNull(chatFiles.detachedAt)));
+
+      res.json(attached);
+    } catch (error: any) {
+      console.error("Error listing chat files:", error);
+      res.status(500).json({ message: "Failed to list chat files" });
+    }
+  });
+
+  // ─── End File Intelligence ─────────────────────────────────────────────────
 
   // Create HTTP server
   const httpServer = createServer(app);

@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './qa/browser',
+  testMatch: '**/*.ts',
   fullyParallel: false, // Run sequentially to avoid DB conflicts
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

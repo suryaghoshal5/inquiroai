@@ -1,5 +1,5 @@
 {
-  "runAt": "2026-03-23T13:26:56.417Z",
+  "runAt": "2026-03-25T11:26:30.027Z",
   "results": [
     {
       "auditor": "routeAuditor",
@@ -11,14 +11,14 @@
           "phase": "static",
           "category": "auth",
           "file": "server/routes.ts",
-          "line": 67,
+          "line": 82,
           "reproSteps": [
             "Send POST /api/initialize-prompts without a session cookie",
             "Observe response"
           ],
           "expected": "401 Unauthorized",
           "actual": "Route executes without authentication check",
-          "timestamp": "2026-03-23T13:26:56.387Z"
+          "timestamp": "2026-03-25T11:26:29.995Z"
         },
         {
           "title": "POST /api/ai-providers/refresh — missing auth middleware",
@@ -26,14 +26,14 @@
           "phase": "static",
           "category": "auth",
           "file": "server/routes.ts",
-          "line": 426,
+          "line": 549,
           "reproSteps": [
             "Send POST /api/ai-providers/refresh without a session cookie",
             "Observe response"
           ],
           "expected": "401 Unauthorized",
           "actual": "Route executes without authentication check",
-          "timestamp": "2026-03-23T13:26:56.388Z"
+          "timestamp": "2026-03-25T11:26:29.996Z"
         },
         {
           "title": "Server error response leaks internal error.message to client",
@@ -41,14 +41,74 @@
           "phase": "static",
           "category": "security",
           "file": "server/routes.ts",
-          "line": 303,
+          "line": 246,
           "reproSteps": [
             "Trigger a server error on POST /api/chats/:id/messages (e.g. DB unavailable)",
             "Inspect response body"
           ],
           "expected": "Generic error message: { message: \"Failed to send message\" }",
           "actual": "Response includes raw error.message which may expose stack/internal detail",
-          "timestamp": "2026-03-23T13:26:56.388Z"
+          "timestamp": "2026-03-25T11:26:29.998Z"
+        },
+        {
+          "title": "Server error response leaks internal error.message to client",
+          "severity": "P2",
+          "phase": "static",
+          "category": "security",
+          "file": "server/routes.ts",
+          "line": 282,
+          "reproSteps": [
+            "Trigger a server error on POST /api/chats/:id/messages (e.g. DB unavailable)",
+            "Inspect response body"
+          ],
+          "expected": "Generic error message: { message: \"Failed to send message\" }",
+          "actual": "Response includes raw error.message which may expose stack/internal detail",
+          "timestamp": "2026-03-25T11:26:29.998Z"
+        },
+        {
+          "title": "Server error response leaks internal error.message to client",
+          "severity": "P2",
+          "phase": "static",
+          "category": "security",
+          "file": "server/routes.ts",
+          "line": 929,
+          "reproSteps": [
+            "Trigger a server error on POST /api/chats/:id/messages (e.g. DB unavailable)",
+            "Inspect response body"
+          ],
+          "expected": "Generic error message: { message: \"Failed to send message\" }",
+          "actual": "Response includes raw error.message which may expose stack/internal detail",
+          "timestamp": "2026-03-25T11:26:29.998Z"
+        },
+        {
+          "title": "Server error response leaks internal error.message to client",
+          "severity": "P2",
+          "phase": "static",
+          "category": "security",
+          "file": "server/routes.ts",
+          "line": 988,
+          "reproSteps": [
+            "Trigger a server error on POST /api/chats/:id/messages (e.g. DB unavailable)",
+            "Inspect response body"
+          ],
+          "expected": "Generic error message: { message: \"Failed to send message\" }",
+          "actual": "Response includes raw error.message which may expose stack/internal detail",
+          "timestamp": "2026-03-25T11:26:29.998Z"
+        },
+        {
+          "title": "Server error response leaks internal error.message to client",
+          "severity": "P2",
+          "phase": "static",
+          "category": "security",
+          "file": "server/routes.ts",
+          "line": 1034,
+          "reproSteps": [
+            "Trigger a server error on POST /api/chats/:id/messages (e.g. DB unavailable)",
+            "Inspect response body"
+          ],
+          "expected": "Generic error message: { message: \"Failed to send message\" }",
+          "actual": "Response includes raw error.message which may expose stack/internal detail",
+          "timestamp": "2026-03-25T11:26:29.998Z"
         },
         {
           "title": "POST /api/api-keys — provider field not validated against allowlist",
@@ -56,14 +116,14 @@
           "phase": "static",
           "category": "validation",
           "file": "server/routes.ts",
-          "line": 347,
+          "line": 470,
           "reproSteps": [
             "POST /api/api-keys with body { provider: 'malicious', apiKey: 'test' }",
             "Observe that no allowlist check rejects the provider value"
           ],
           "expected": "400 — provider must be one of: openai, gemini, claude, grok",
           "actual": "Arbitrary provider string accepted (only validation is via AIOrchestrator.validateApiKey which may throw)",
-          "timestamp": "2026-03-23T13:26:56.388Z"
+          "timestamp": "2026-03-25T11:26:29.998Z"
         },
         {
           "title": "No rate limiting on any API endpoints",
@@ -78,22 +138,7 @@
           ],
           "expected": "Rate limiting middleware (e.g. express-rate-limit) present",
           "actual": "No rate limiting — unlimited requests accepted per user/IP",
-          "timestamp": "2026-03-23T13:26:56.388Z"
-        },
-        {
-          "title": "User message content logged to server console (potential PII leak)",
-          "severity": "P2",
-          "phase": "static",
-          "category": "privacy",
-          "file": "server/routes.ts",
-          "line": 208,
-          "reproSteps": [
-            "Send a message containing sensitive information",
-            "Inspect server console output"
-          ],
-          "expected": "Message content NOT logged; only chat/message IDs logged",
-          "actual": "First 100 chars of user message content written to console.log",
-          "timestamp": "2026-03-23T13:26:56.388Z"
+          "timestamp": "2026-03-25T11:26:29.998Z"
         },
         {
           "title": "GET /api/chats/:id — no NaN guard on parseInt(req.params.id)",
@@ -101,166 +146,191 @@
           "phase": "static",
           "category": "validation",
           "file": "server/routes.ts",
-          "line": 184,
+          "line": 203,
           "reproSteps": [
             "GET /api/chats/notanumber",
             "Observe DB query with NaN id"
           ],
           "expected": "400 Bad Request — invalid chat ID format",
           "actual": "parseInt returns NaN, which is passed to DB query; behaviour undefined",
-          "timestamp": "2026-03-23T13:26:56.388Z"
-        },
-        {
-          "title": "Context window hardcoded to last 10 messages — no model-aware limit",
-          "severity": "P3",
-          "phase": "static",
-          "category": "correctness",
-          "file": "server/routes.ts",
-          "line": 253,
-          "reproSteps": [
-            "Create a chat and send 15+ messages",
-            "Observe that only the last 10 are sent as context to the AI"
-          ],
-          "expected": "Context limit varies by model context window (or is configurable)",
-          "actual": "Hardcoded slice(-10) ignores model-specific limits",
-          "timestamp": "2026-03-23T13:26:56.388Z"
+          "timestamp": "2026-03-25T11:26:29.998Z"
         }
       ],
-      "passCount": 12,
-      "failCount": 8,
-      "durationMs": 2
+      "passCount": 28,
+      "failCount": 10,
+      "durationMs": 5
     },
     {
       "auditor": "envAuditor",
       "phase": "static",
       "issues": [
         {
-          "title": ".env.example file missing from repo root",
-          "severity": "P2",
+          "title": "Undocumented env var: process.env.EVALUATOR_MODEL_ID",
+          "severity": "P3",
           "phase": "static",
           "category": "config",
-          "file": ".env.example",
+          "file": "server/config.ts",
+          "line": 11,
           "reproSteps": [
-            "Look for .env.example in repo root",
-            "File does not exist"
+            "Search server code for process.env.EVALUATOR_MODEL_ID",
+            "Check .env.example — var is not documented"
           ],
-          "expected": ".env.example documenting all required environment variables",
-          "actual": "No .env.example — new contributors have no reference for required env vars",
-          "timestamp": "2026-03-23T13:26:56.402Z"
+          "expected": "EVALUATOR_MODEL_ID documented in .env.example",
+          "actual": "EVALUATOR_MODEL_ID used in code but not in documented env var list",
+          "timestamp": "2026-03-25T11:26:30.012Z"
+        },
+        {
+          "title": "Undocumented env var: process.env.COMPRESSION_MODEL_ID",
+          "severity": "P3",
+          "phase": "static",
+          "category": "config",
+          "file": "server/config.ts",
+          "line": 14,
+          "reproSteps": [
+            "Search server code for process.env.COMPRESSION_MODEL_ID",
+            "Check .env.example — var is not documented"
+          ],
+          "expected": "COMPRESSION_MODEL_ID documented in .env.example",
+          "actual": "COMPRESSION_MODEL_ID used in code but not in documented env var list",
+          "timestamp": "2026-03-25T11:26:30.012Z"
+        },
+        {
+          "title": "Undocumented env var: process.env.NOTION_CLASSIFIER_MODEL_ID",
+          "severity": "P3",
+          "phase": "static",
+          "category": "config",
+          "file": "server/config.ts",
+          "line": 17,
+          "reproSteps": [
+            "Search server code for process.env.NOTION_CLASSIFIER_MODEL_ID",
+            "Check .env.example — var is not documented"
+          ],
+          "expected": "NOTION_CLASSIFIER_MODEL_ID documented in .env.example",
+          "actual": "NOTION_CLASSIFIER_MODEL_ID used in code but not in documented env var list",
+          "timestamp": "2026-03-25T11:26:30.012Z"
+        },
+        {
+          "title": "Undocumented env var: process.env.FALLBACK_PROMPT_COST_PER_TOKEN",
+          "severity": "P3",
+          "phase": "static",
+          "category": "config",
+          "file": "server/config.ts",
+          "line": 24,
+          "reproSteps": [
+            "Search server code for process.env.FALLBACK_PROMPT_COST_PER_TOKEN",
+            "Check .env.example — var is not documented"
+          ],
+          "expected": "FALLBACK_PROMPT_COST_PER_TOKEN documented in .env.example",
+          "actual": "FALLBACK_PROMPT_COST_PER_TOKEN used in code but not in documented env var list",
+          "timestamp": "2026-03-25T11:26:30.012Z"
+        },
+        {
+          "title": "Undocumented env var: process.env.FALLBACK_COMPLETION_COST_PER_TOKEN",
+          "severity": "P3",
+          "phase": "static",
+          "category": "config",
+          "file": "server/config.ts",
+          "line": 27,
+          "reproSteps": [
+            "Search server code for process.env.FALLBACK_COMPLETION_COST_PER_TOKEN",
+            "Check .env.example — var is not documented"
+          ],
+          "expected": "FALLBACK_COMPLETION_COST_PER_TOKEN documented in .env.example",
+          "actual": "FALLBACK_COMPLETION_COST_PER_TOKEN used in code but not in documented env var list",
+          "timestamp": "2026-03-25T11:26:30.012Z"
+        },
+        {
+          "title": "Undocumented env var: process.env.MAX_FILE_SIZE_BYTES",
+          "severity": "P3",
+          "phase": "static",
+          "category": "config",
+          "file": "server/config.ts",
+          "line": 31,
+          "reproSteps": [
+            "Search server code for process.env.MAX_FILE_SIZE_BYTES",
+            "Check .env.example — var is not documented"
+          ],
+          "expected": "MAX_FILE_SIZE_BYTES documented in .env.example",
+          "actual": "MAX_FILE_SIZE_BYTES used in code but not in documented env var list",
+          "timestamp": "2026-03-25T11:26:30.012Z"
+        },
+        {
+          "title": "Undocumented env var: process.env.MAX_FILES_RETURNED",
+          "severity": "P3",
+          "phase": "static",
+          "category": "config",
+          "file": "server/config.ts",
+          "line": 34,
+          "reproSteps": [
+            "Search server code for process.env.MAX_FILES_RETURNED",
+            "Check .env.example — var is not documented"
+          ],
+          "expected": "MAX_FILES_RETURNED documented in .env.example",
+          "actual": "MAX_FILES_RETURNED used in code but not in documented env var list",
+          "timestamp": "2026-03-25T11:26:30.012Z"
+        },
+        {
+          "title": "Undocumented env var: process.env.MAX_FOLDER_DEPTH",
+          "severity": "P3",
+          "phase": "static",
+          "category": "config",
+          "file": "server/config.ts",
+          "line": 37,
+          "reproSteps": [
+            "Search server code for process.env.MAX_FOLDER_DEPTH",
+            "Check .env.example — var is not documented"
+          ],
+          "expected": "MAX_FOLDER_DEPTH documented in .env.example",
+          "actual": "MAX_FOLDER_DEPTH used in code but not in documented env var list",
+          "timestamp": "2026-03-25T11:26:30.012Z"
+        },
+        {
+          "title": "Undocumented env var: process.env.MODEL_CACHE_TTL_MS",
+          "severity": "P3",
+          "phase": "static",
+          "category": "config",
+          "file": "server/config.ts",
+          "line": 56,
+          "reproSteps": [
+            "Search server code for process.env.MODEL_CACHE_TTL_MS",
+            "Check .env.example — var is not documented"
+          ],
+          "expected": "MODEL_CACHE_TTL_MS documented in .env.example",
+          "actual": "MODEL_CACHE_TTL_MS used in code but not in documented env var list",
+          "timestamp": "2026-03-25T11:26:30.013Z"
+        },
+        {
+          "title": "Undocumented env var: process.env.OBSIDIAN_VAULT_PATH",
+          "severity": "P3",
+          "phase": "static",
+          "category": "config",
+          "file": "server/routes.ts",
+          "line": 916,
+          "reproSteps": [
+            "Search server code for process.env.OBSIDIAN_VAULT_PATH",
+            "Check .env.example — var is not documented"
+          ],
+          "expected": "OBSIDIAN_VAULT_PATH documented in .env.example",
+          "actual": "OBSIDIAN_VAULT_PATH used in code but not in documented env var list",
+          "timestamp": "2026-03-25T11:26:30.013Z"
         }
       ],
-      "passCount": 18,
-      "failCount": 1,
-      "durationMs": 16
+      "passCount": 32,
+      "failCount": 10,
+      "durationMs": 18
     },
     {
       "auditor": "dbQueryAuditor",
       "phase": "static",
       "issues": [],
-      "passCount": 3,
+      "passCount": 16,
       "failCount": 0,
-      "durationMs": 4
+      "durationMs": 5
     },
     {
       "auditor": "consoleSanitizer",
       "phase": "static",
       "issues": [
-        {
-          "title": "console.log may output sensitive data",
-          "severity": "P2",
-          "phase": "static",
-          "category": "privacy",
-          "file": "server/routes.ts",
-          "line": 208,
-          "reproSteps": [
-            "Inspect server/routes.ts:208",
-            "Trigger the code path that executes this log",
-            "Check server stdout for sensitive output"
-          ],
-          "expected": "Sensitive fields omitted or redacted from log output",
-          "actual": "console statement on line 208 references sensitive keyword(s): content, message, userId",
-          "timestamp": "2026-03-23T13:26:56.410Z"
-        },
-        {
-          "title": "console.log may output sensitive data",
-          "severity": "P2",
-          "phase": "static",
-          "category": "privacy",
-          "file": "server/routes.ts",
-          "line": 297,
-          "reproSteps": [
-            "Inspect server/routes.ts:297",
-            "Trigger the code path that executes this log",
-            "Check server stdout for sensitive output"
-          ],
-          "expected": "Sensitive fields omitted or redacted from log output",
-          "actual": "console statement on line 297 references sensitive keyword(s): message",
-          "timestamp": "2026-03-23T13:26:56.410Z"
-        },
-        {
-          "title": "console.log may output sensitive data",
-          "severity": "P2",
-          "phase": "static",
-          "category": "privacy",
-          "file": "server/services/aiOrchestrator.ts",
-          "line": 257,
-          "reproSteps": [
-            "Inspect server/services/aiOrchestrator.ts:257",
-            "Trigger the code path that executes this log",
-            "Check server stdout for sensitive output"
-          ],
-          "expected": "Sensitive fields omitted or redacted from log output",
-          "actual": "console statement on line 257 references sensitive keyword(s): message",
-          "timestamp": "2026-03-23T13:26:56.410Z"
-        },
-        {
-          "title": "console.log may output sensitive data",
-          "severity": "P2",
-          "phase": "static",
-          "category": "privacy",
-          "file": "server/services/aiOrchestrator.ts",
-          "line": 319,
-          "reproSteps": [
-            "Inspect server/services/aiOrchestrator.ts:319",
-            "Trigger the code path that executes this log",
-            "Check server stdout for sensitive output"
-          ],
-          "expected": "Sensitive fields omitted or redacted from log output",
-          "actual": "console statement on line 319 references sensitive keyword(s): content",
-          "timestamp": "2026-03-23T13:26:56.410Z"
-        },
-        {
-          "title": "console.log may output sensitive data",
-          "severity": "P2",
-          "phase": "static",
-          "category": "privacy",
-          "file": "server/services/aiOrchestrator.ts",
-          "line": 346,
-          "reproSteps": [
-            "Inspect server/services/aiOrchestrator.ts:346",
-            "Trigger the code path that executes this log",
-            "Check server stdout for sensitive output"
-          ],
-          "expected": "Sensitive fields omitted or redacted from log output",
-          "actual": "console statement on line 346 references sensitive keyword(s): message",
-          "timestamp": "2026-03-23T13:26:56.410Z"
-        },
-        {
-          "title": "console.log may output sensitive data",
-          "severity": "P2",
-          "phase": "static",
-          "category": "privacy",
-          "file": "server/services/aiOrchestrator.ts",
-          "line": 386,
-          "reproSteps": [
-            "Inspect server/services/aiOrchestrator.ts:386",
-            "Trigger the code path that executes this log",
-            "Check server stdout for sensitive output"
-          ],
-          "expected": "Sensitive fields omitted or redacted from log output",
-          "actual": "console statement on line 386 references sensitive keyword(s): message",
-          "timestamp": "2026-03-23T13:26:56.410Z"
-        },
         {
           "title": "console.log may output sensitive data",
           "severity": "P2",
@@ -275,7 +345,7 @@
           ],
           "expected": "Sensitive fields omitted or redacted from log output",
           "actual": "console statement on line 19 references sensitive keyword(s): message",
-          "timestamp": "2026-03-23T13:26:56.413Z"
+          "timestamp": "2026-03-25T11:26:30.026Z"
         },
         {
           "title": "console.log may output sensitive data",
@@ -291,7 +361,7 @@
           ],
           "expected": "Sensitive fields omitted or redacted from log output",
           "actual": "console statement on line 164 references sensitive keyword(s): session",
-          "timestamp": "2026-03-23T13:26:56.410Z"
+          "timestamp": "2026-03-25T11:26:30.024Z"
         },
         {
           "title": "console.log may output sensitive data",
@@ -299,47 +369,15 @@
           "phase": "static",
           "category": "privacy",
           "file": "server/routes.ts",
-          "line": 216,
+          "line": 279,
           "reproSteps": [
-            "Inspect server/routes.ts:216",
+            "Inspect server/routes.ts:279",
             "Trigger the code path that executes this log",
             "Check server stdout for sensitive output"
           ],
           "expected": "Sensitive fields omitted or redacted from log output",
-          "actual": "console statement on line 216 references sensitive keyword(s): userId",
-          "timestamp": "2026-03-23T13:26:56.410Z"
-        },
-        {
-          "title": "console.log may output sensitive data",
-          "severity": "P3",
-          "phase": "static",
-          "category": "privacy",
-          "file": "server/routes.ts",
-          "line": 232,
-          "reproSteps": [
-            "Inspect server/routes.ts:232",
-            "Trigger the code path that executes this log",
-            "Check server stdout for sensitive output"
-          ],
-          "expected": "Sensitive fields omitted or redacted from log output",
-          "actual": "console statement on line 232 references sensitive keyword(s): userId",
-          "timestamp": "2026-03-23T13:26:56.410Z"
-        },
-        {
-          "title": "console.log may output sensitive data",
-          "severity": "P3",
-          "phase": "static",
-          "category": "privacy",
-          "file": "server/routes.ts",
-          "line": 241,
-          "reproSteps": [
-            "Inspect server/routes.ts:241",
-            "Trigger the code path that executes this log",
-            "Check server stdout for sensitive output"
-          ],
-          "expected": "Sensitive fields omitted or redacted from log output",
-          "actual": "console statement on line 241 references sensitive keyword(s): userId",
-          "timestamp": "2026-03-23T13:26:56.410Z"
+          "actual": "console statement on line 279 references sensitive keyword(s): token",
+          "timestamp": "2026-03-25T11:26:30.025Z"
         },
         {
           "title": "console.log may output sensitive data",
@@ -347,75 +385,27 @@
           "phase": "static",
           "category": "privacy",
           "file": "server/services/aiOrchestrator.ts",
-          "line": 254,
+          "line": 74,
           "reproSteps": [
-            "Inspect server/services/aiOrchestrator.ts:254",
+            "Inspect server/services/aiOrchestrator.ts:74",
             "Trigger the code path that executes this log",
             "Check server stdout for sensitive output"
           ],
           "expected": "Sensitive fields omitted or redacted from log output",
-          "actual": "console statement on line 254 references sensitive keyword(s): userId",
-          "timestamp": "2026-03-23T13:26:56.410Z"
-        },
-        {
-          "title": "console.log may output sensitive data",
-          "severity": "P3",
-          "phase": "static",
-          "category": "privacy",
-          "file": "server/services/aiOrchestrator.ts",
-          "line": 295,
-          "reproSteps": [
-            "Inspect server/services/aiOrchestrator.ts:295",
-            "Trigger the code path that executes this log",
-            "Check server stdout for sensitive output"
-          ],
-          "expected": "Sensitive fields omitted or redacted from log output",
-          "actual": "console statement on line 295 references sensitive keyword(s): userId",
-          "timestamp": "2026-03-23T13:26:56.410Z"
-        },
-        {
-          "title": "console.log may output sensitive data",
-          "severity": "P3",
-          "phase": "static",
-          "category": "privacy",
-          "file": "server/services/aiOrchestrator.ts",
-          "line": 343,
-          "reproSteps": [
-            "Inspect server/services/aiOrchestrator.ts:343",
-            "Trigger the code path that executes this log",
-            "Check server stdout for sensitive output"
-          ],
-          "expected": "Sensitive fields omitted or redacted from log output",
-          "actual": "console statement on line 343 references sensitive keyword(s): userId",
-          "timestamp": "2026-03-23T13:26:56.410Z"
-        },
-        {
-          "title": "console.log may output sensitive data",
-          "severity": "P3",
-          "phase": "static",
-          "category": "privacy",
-          "file": "server/services/aiOrchestrator.ts",
-          "line": 383,
-          "reproSteps": [
-            "Inspect server/services/aiOrchestrator.ts:383",
-            "Trigger the code path that executes this log",
-            "Check server stdout for sensitive output"
-          ],
-          "expected": "Sensitive fields omitted or redacted from log output",
-          "actual": "console statement on line 383 references sensitive keyword(s): userId",
-          "timestamp": "2026-03-23T13:26:56.410Z"
+          "actual": "console statement on line 74 references sensitive keyword(s): token",
+          "timestamp": "2026-03-25T11:26:30.025Z"
         }
       ],
-      "passCount": 67,
-      "failCount": 15,
-      "durationMs": 6
+      "passCount": 48,
+      "failCount": 4,
+      "durationMs": 5
     }
   ],
   "totalIssues": 24,
   "bySeverity": {
     "P0": 0,
     "P1": 2,
-    "P2": 13,
-    "P3": 9
+    "P2": 9,
+    "P3": 13
   }
 }

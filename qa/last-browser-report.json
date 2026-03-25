@@ -1,0 +1,1818 @@
+{
+  "config": {
+    "configFile": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/playwright.config.ts",
+    "rootDir": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.ts"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "qa/last-browser-report.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "runAgents": "none",
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.58.2",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "apiKeyManagementTests.ts",
+      "file": "apiKeyManagementTests.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "API Key Management",
+          "file": "apiKeyManagementTests.ts",
+          "line": 26,
+          "column": 6,
+          "specs": [
+            {
+              "title": "settings page shows API key section",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2940,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:38:50.095Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "04dff4219874945b08be-118820365d2349a32271",
+              "file": "apiKeyManagementTests.ts",
+              "line": 28,
+              "column": 3
+            },
+            {
+              "title": "GET /api/api-keys returns array (no encryptedKey)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 532,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:38:55.268Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "04dff4219874945b08be-ed2503a0f7c5716a84c5",
+              "file": "apiKeyManagementTests.ts",
+              "line": 38,
+              "column": 3
+            },
+            {
+              "title": "existing API keys show masked preview (first/last chars only)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1772,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:38:55.810Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "04dff4219874945b08be-95480131dc703b070ca0",
+              "file": "apiKeyManagementTests.ts",
+              "line": 49,
+              "column": 3
+            },
+            {
+              "title": "POST /api/api-keys with invalid key returns 400",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 903,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:38:57.592Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "04dff4219874945b08be-93a199e79a97ca5f38c4",
+              "file": "apiKeyManagementTests.ts",
+              "line": 69,
+              "column": 3
+            },
+            {
+              "title": "POST /api/api-keys with empty body returns 400",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 147,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:38:58.502Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "04dff4219874945b08be-39aaa9ccbaf5e6ba3a43",
+              "file": "apiKeyManagementTests.ts",
+              "line": 78,
+              "column": 3
+            },
+            {
+              "title": "DELETE /api/api-keys/:id returns 404 for non-existent key",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 137,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:38:58.656Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "04dff4219874945b08be-fc0aa04f1735036b345b",
+              "file": "apiKeyManagementTests.ts",
+              "line": 83,
+              "column": 3
+            },
+            {
+              "title": "settings page has no JS errors",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1953,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:38:58.801Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "04dff4219874945b08be-b4aeda6c980ac8e0a748",
+              "file": "apiKeyManagementTests.ts",
+              "line": 90,
+              "column": 3
+            },
+            {
+              "title": "chat creation page shows settings redirect when no API key",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1328,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:39:00.764Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "04dff4219874945b08be-321cdd4258a815170f59",
+              "file": "apiKeyManagementTests.ts",
+              "line": 97,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "chatFlowTests.ts",
+      "file": "chatFlowTests.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Core Chat Flows",
+          "file": "chatFlowTests.ts",
+          "line": 40,
+          "column": 6,
+          "specs": [
+            {
+              "title": "app loads and shows landing or dashboard",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 1896,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31m\"\"\u001b[39m",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31m\"\"\u001b[39m\n    at /Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts:46:19",
+                        "location": {
+                          "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts",
+                          "column": 19,
+                          "line": 46
+                        },
+                        "snippet": "  44 |     // Should not be a blank page or error\n  45 |     const title = await page.title();\n> 46 |     expect(title).toBeTruthy();\n     |                   ^\n  47 |\n  48 |     // Should not show a raw error stack\n  49 |     const bodyText = await page.locator('body').innerText();"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts",
+                            "column": 19,
+                            "line": 46
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31m\"\"\u001b[39m\n\n  44 |     // Should not be a blank page or error\n  45 |     const title = await page.title();\n> 46 |     expect(title).toBeTruthy();\n     |                   ^\n  47 |\n  48 |     // Should not show a raw error stack\n  49 |     const bodyText = await page.locator('body').innerText();\n    at /Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts:46:19"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:39:02.138Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/test-results/chatFlowTests.ts-Core-Chat-2b31f--shows-landing-or-dashboard-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/test-results/chatFlowTests.ts-Core-Chat-2b31f--shows-landing-or-dashboard-chromium/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/test-results/chatFlowTests.ts-Core-Chat-2b31f--shows-landing-or-dashboard-chromium/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts",
+                        "column": 19,
+                        "line": 46
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "2d4e5f82c99f50abe5a5-b8c267a0f805bdb3d8ab",
+              "file": "chatFlowTests.ts",
+              "line": 42,
+              "column": 3
+            },
+            {
+              "title": "dashboard shows Projects or Quick Chats section",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1702,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:39:05.199Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d4e5f82c99f50abe5a5-844099e1d871d25db727",
+              "file": "chatFlowTests.ts",
+              "line": 54,
+              "column": 3
+            },
+            {
+              "title": "new chat form renders with all required fields",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1312,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:39:08.589Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d4e5f82c99f50abe5a5-ca445ac898041b50e019",
+              "file": "chatFlowTests.ts",
+              "line": 63,
+              "column": 3
+            },
+            {
+              "title": "creating a chat navigates to chat view",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 2512,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n    at /Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts:79:24",
+                        "location": {
+                          "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts",
+                          "column": 24,
+                          "line": 79
+                        },
+                        "snippet": "  77 |     const url = page.url();\n  78 |     const onChatPage = url.includes('/chat/') && !url.endsWith('/chat/new');\n> 79 |     expect(onChatPage).toBeTruthy();\n     |                        ^\n  80 |   });\n  81 |\n  82 |   test('message input is visible in chat view', async ({ page }) => {"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts",
+                            "column": 24,
+                            "line": 79
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n\n  77 |     const url = page.url();\n  78 |     const onChatPage = url.includes('/chat/') && !url.endsWith('/chat/new');\n> 79 |     expect(onChatPage).toBeTruthy();\n     |                        ^\n  80 |   });\n  81 |\n  82 |   test('message input is visible in chat view', async ({ page }) => {\n    at /Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts:79:24"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:39:09.912Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/test-results/chatFlowTests.ts-Core-Chat-38f34-chat-navigates-to-chat-view-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/test-results/chatFlowTests.ts-Core-Chat-38f34-chat-navigates-to-chat-view-chromium/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/test-results/chatFlowTests.ts-Core-Chat-38f34-chat-navigates-to-chat-view-chromium/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts",
+                        "column": 24,
+                        "line": 79
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "2d4e5f82c99f50abe5a5-4187cb87ba72db5172c4",
+              "file": "chatFlowTests.ts",
+              "line": 74,
+              "column": 3
+            },
+            {
+              "title": "message input is visible in chat view",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 14885,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByPlaceholder(/message|ask|type/i).or(locator('textarea').last())\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByPlaceholder(/message|ask|type/i).or(locator('textarea').last())\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByPlaceholder(/message|ask|type/i).or(locator('textarea').last())\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByPlaceholder(/message|ask|type/i).or(locator('textarea').last())\u001b[22m\n\n    at /Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts:88:28",
+                        "location": {
+                          "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts",
+                          "column": 28,
+                          "line": 88
+                        },
+                        "snippet": "  86 |       page.locator('textarea').last()\n  87 |     );\n> 88 |     await expect(msgInput).toBeVisible({ timeout: 10000 });\n     |                            ^\n  89 |   });\n  90 |\n  91 |   test('chat appears in dashboard after creation', async ({ page }) => {"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts",
+                            "column": 28,
+                            "line": 88
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByPlaceholder(/message|ask|type/i).or(locator('textarea').last())\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByPlaceholder(/message|ask|type/i).or(locator('textarea').last())\u001b[22m\n\n\n  86 |       page.locator('textarea').last()\n  87 |     );\n> 88 |     await expect(msgInput).toBeVisible({ timeout: 10000 });\n     |                            ^\n  89 |   });\n  90 |\n  91 |   test('chat appears in dashboard after creation', async ({ page }) => {\n    at /Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts:88:28"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:39:13.571Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/test-results/chatFlowTests.ts-Core-Chat-ed33b-put-is-visible-in-chat-view-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/test-results/chatFlowTests.ts-Core-Chat-ed33b-put-is-visible-in-chat-view-chromium/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/test-results/chatFlowTests.ts-Core-Chat-ed33b-put-is-visible-in-chat-view-chromium/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts",
+                        "column": 28,
+                        "line": 88
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "2d4e5f82c99f50abe5a5-29536a74c7ecc6125834",
+              "file": "chatFlowTests.ts",
+              "line": 82,
+              "column": 3
+            },
+            {
+              "title": "chat appears in dashboard after creation",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 3915,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n    at /Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts:97:24",
+                        "location": {
+                          "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts",
+                          "column": 24,
+                          "line": 97
+                        },
+                        "snippet": "   95 |     // Quick Chats section should appear (or Projects if linked)\n   96 |     const hasContent = await page.getByText(/Quick Chats|Projects/i).isVisible().catch(() => false);\n>  97 |     expect(hasContent).toBeTruthy();\n      |                        ^\n   98 |   });\n   99 |\n  100 |   test('markdown renders in AI response (code blocks)', async ({ page }) => {"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts",
+                            "column": 24,
+                            "line": 97
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n\n   95 |     // Quick Chats section should appear (or Projects if linked)\n   96 |     const hasContent = await page.getByText(/Quick Chats|Projects/i).isVisible().catch(() => false);\n>  97 |     expect(hasContent).toBeTruthy();\n      |                        ^\n   98 |   });\n   99 |\n  100 |   test('markdown renders in AI response (code blocks)', async ({ page }) => {\n    at /Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts:97:24"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:39:31.306Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/test-results/chatFlowTests.ts-Core-Chat-bf705-in-dashboard-after-creation-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/test-results/chatFlowTests.ts-Core-Chat-bf705-in-dashboard-after-creation-chromium/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/test-results/chatFlowTests.ts-Core-Chat-bf705-in-dashboard-after-creation-chromium/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/chatFlowTests.ts",
+                        "column": 24,
+                        "line": 97
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "2d4e5f82c99f50abe5a5-06391b8e5061fd8e3134",
+              "file": "chatFlowTests.ts",
+              "line": 91,
+              "column": 3
+            },
+            {
+              "title": "markdown renders in AI response (code blocks)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1958,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:39:38.580Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d4e5f82c99f50abe5a5-05130adc6fa981c33429",
+              "file": "chatFlowTests.ts",
+              "line": 100,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "exportTests.ts",
+      "file": "exportTests.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Chat Export",
+          "file": "exportTests.ts",
+          "line": 21,
+          "column": 6,
+          "specs": [
+            {
+              "title": "export button/menu visible in chat view",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "location": {
+                        "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/exportTests.ts",
+                        "line": 26,
+                        "column": 12
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 1199,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:39:42.712Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "location": {
+                            "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/exportTests.ts",
+                            "line": 26,
+                            "column": 12
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "1ec330d3086acab75a8e-e9f36ad08cd0bae10bdb",
+              "file": "exportTests.ts",
+              "line": 23,
+              "column": 3
+            },
+            {
+              "title": "PDF export downloads a file",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "location": {
+                        "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/exportTests.ts",
+                        "line": 38,
+                        "column": 12
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 1067,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:39:43.920Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "location": {
+                            "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/exportTests.ts",
+                            "line": 38,
+                            "column": 12
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "1ec330d3086acab75a8e-f0824a09421fa123600d",
+              "file": "exportTests.ts",
+              "line": 35,
+              "column": 3
+            },
+            {
+              "title": "Markdown export downloads .md file",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "location": {
+                        "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/exportTests.ts",
+                        "line": 69,
+                        "column": 12
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 2034,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:39:44.995Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "location": {
+                            "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/exportTests.ts",
+                            "line": 69,
+                            "column": 12
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "1ec330d3086acab75a8e-c6d51388584cef92378f",
+              "file": "exportTests.ts",
+              "line": 66,
+              "column": 3
+            },
+            {
+              "title": "export does not crash on empty chat",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1921,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:39:47.043Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1ec330d3086acab75a8e-fec46612e372c18f3821",
+              "file": "exportTests.ts",
+              "line": 95,
+              "column": 3
+            },
+            {
+              "title": "no JS errors during export flow",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1362,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:39:48.975Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1ec330d3086acab75a8e-d6aecb3866f1ec6e39b6",
+              "file": "exportTests.ts",
+              "line": 122,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "fileUploadUITests.ts",
+      "file": "fileUploadUITests.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "File Upload UI",
+          "file": "fileUploadUITests.ts",
+          "line": 23,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Upload File button is visible on Task tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1584,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:39:50.394Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "fb33853e881cb35ac48e-46c568d40b6589979dfe",
+              "file": "fileUploadUITests.ts",
+              "line": 25,
+              "column": 3
+            },
+            {
+              "title": "click-to-upload button is enabled",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1904,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:39:51.992Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "fb33853e881cb35ac48e-f831dde1644315473e3e",
+              "file": "fileUploadUITests.ts",
+              "line": 32,
+              "column": 3
+            },
+            {
+              "title": "valid PDF can be uploaded via hidden file input",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4227,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:39:53.914Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "fb33853e881cb35ac48e-d0f94f436c9c26778fbf",
+              "file": "fileUploadUITests.ts",
+              "line": 41,
+              "column": 3
+            },
+            {
+              "title": "oversized file is rejected with non-500 status",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 1425,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: < \u001b[32m500\u001b[39m\nReceived:   \u001b[31m500\u001b[39m",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: < \u001b[32m500\u001b[39m\nReceived:   \u001b[31m500\u001b[39m\n    at /Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/fileUploadUITests.ts:65:26",
+                        "location": {
+                          "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/fileUploadUITests.ts",
+                          "column": 26,
+                          "line": 65
+                        },
+                        "snippet": "  63 |     });\n  64 |     // Should get 400 (too large), not 500\n> 65 |     expect(res.status()).toBeLessThan(500);\n     |                          ^\n  66 |   });\n  67 |\n  68 |   test('wrong file type returns 4xx from upload API', async ({ page }) => {"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/fileUploadUITests.ts",
+                            "column": 26,
+                            "line": 65
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: < \u001b[32m500\u001b[39m\nReceived:   \u001b[31m500\u001b[39m\n\n  63 |     });\n  64 |     // Should get 400 (too large), not 500\n> 65 |     expect(res.status()).toBeLessThan(500);\n     |                          ^\n  66 |   });\n  67 |\n  68 |   test('wrong file type returns 4xx from upload API', async ({ page }) => {\n    at /Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/fileUploadUITests.ts:65:26"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:39:58.163Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/test-results/fileUploadUITests.ts-File--287bb-ejected-with-non-500-status-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/test-results/fileUploadUITests.ts-File--287bb-ejected-with-non-500-status-chromium/video.webm"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/fileUploadUITests.ts",
+                        "column": 26,
+                        "line": 65
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "fb33853e881cb35ac48e-8fef494c7e51feda36fc",
+              "file": "fileUploadUITests.ts",
+              "line": 53,
+              "column": 3
+            },
+            {
+              "title": "wrong file type returns 4xx from upload API",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 1331,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: < \u001b[32m500\u001b[39m\nReceived:   \u001b[31m500\u001b[39m",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: < \u001b[32m500\u001b[39m\nReceived:   \u001b[31m500\u001b[39m\n    at /Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/fileUploadUITests.ts:80:26",
+                        "location": {
+                          "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/fileUploadUITests.ts",
+                          "column": 26,
+                          "line": 80
+                        },
+                        "snippet": "  78 |     // Should fail with 4xx, not 500\n  79 |     expect(res.status()).toBeGreaterThanOrEqual(400);\n> 80 |     expect(res.status()).toBeLessThan(500);\n     |                          ^\n  81 |   });\n  82 |\n  83 |   test('Context tab also has an Upload File button (for Examples)', async ({ page }) => {"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/fileUploadUITests.ts",
+                            "column": 26,
+                            "line": 80
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: < \u001b[32m500\u001b[39m\nReceived:   \u001b[31m500\u001b[39m\n\n  78 |     // Should fail with 4xx, not 500\n  79 |     expect(res.status()).toBeGreaterThanOrEqual(400);\n> 80 |     expect(res.status()).toBeLessThan(500);\n     |                          ^\n  81 |   });\n  82 |\n  83 |   test('Context tab also has an Upload File button (for Examples)', async ({ page }) => {\n    at /Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/fileUploadUITests.ts:80:26"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:40:03.955Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/test-results/fileUploadUITests.ts-File--7205e-returns-4xx-from-upload-API-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/test-results/fileUploadUITests.ts-File--7205e-returns-4xx-from-upload-API-chromium/video.webm"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/Users/suryadip/Library/CloudStorage/Dropbox/Interest - Non Work/InquiroAI/Replit code/InquiroAI/qa/browser/fileUploadUITests.ts",
+                        "column": 26,
+                        "line": 80
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "fb33853e881cb35ac48e-15b4866d5b0403aa5924",
+              "file": "fileUploadUITests.ts",
+              "line": 68,
+              "column": 3
+            },
+            {
+              "title": "Context tab also has an Upload File button (for Examples)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3381,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:40:09.922Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "fb33853e881cb35ac48e-64e3e9a7b0427781a7cc",
+              "file": "fileUploadUITests.ts",
+              "line": 83,
+              "column": 3
+            },
+            {
+              "title": "page does not crash after file upload interaction",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4770,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:40:15.866Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "fb33853e881cb35ac48e-b7eabffc70edec932644",
+              "file": "fileUploadUITests.ts",
+              "line": 93,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "modelSelectorTests.ts",
+      "file": "modelSelectorTests.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Model Selector",
+          "file": "modelSelectorTests.ts",
+          "line": 18,
+          "column": 6,
+          "specs": [
+            {
+              "title": "new chat form Settings tab shows AI engine section",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2573,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:40:20.713Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8585eb15bff06d66e04e-534ca63b543999606701",
+              "file": "modelSelectorTests.ts",
+              "line": 20,
+              "column": 3
+            },
+            {
+              "title": "clicking Override shows provider selector",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2170,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:40:23.296Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8585eb15bff06d66e04e-1e0cef90f5b15f0b5078",
+              "file": "modelSelectorTests.ts",
+              "line": 29,
+              "column": 3
+            },
+            {
+              "title": "GET /api/ai-providers returns 200 with non-empty response",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 591,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:40:25.476Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8585eb15bff06d66e04e-fe1428e259867d3f3f25",
+              "file": "modelSelectorTests.ts",
+              "line": 42,
+              "column": 3
+            },
+            {
+              "title": "refresh providers endpoint returns success",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 189,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:40:26.076Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8585eb15bff06d66e04e-bdd59d11f0a73b177544",
+              "file": "modelSelectorTests.ts",
+              "line": 56,
+              "column": 3
+            },
+            {
+              "title": "Settings tab submit button is visible",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3143,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:40:26.278Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8585eb15bff06d66e04e-406f7cd6306974e0bb50",
+              "file": "modelSelectorTests.ts",
+              "line": 62,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "navigationTests.ts",
+      "file": "navigationTests.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Navigation",
+          "file": "navigationTests.ts",
+          "line": 10,
+          "column": 6,
+          "specs": [
+            {
+              "title": "back from chat returns to dashboard, not blank page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2873,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:40:29.540Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2e623657f39689dde41b-5c8baf47d3a999ddb29c",
+              "file": "navigationTests.ts",
+              "line": 12,
+              "column": 3
+            },
+            {
+              "title": "multi-chat switching preserves each chat context",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1360,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:40:32.630Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2e623657f39689dde41b-e3d253ccc8a0a5615510",
+              "file": "navigationTests.ts",
+              "line": 28,
+              "column": 3
+            },
+            {
+              "title": "chat list sorts by most recent (newest first)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1140,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:40:34.010Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2e623657f39689dde41b-3e6b6e94e507b15c0be3",
+              "file": "navigationTests.ts",
+              "line": 53,
+              "column": 3
+            },
+            {
+              "title": "long chat titles truncate gracefully (no overflow)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2053,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:40:35.168Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2e623657f39689dde41b-6d55f01a3b1c2eb8ac11",
+              "file": "navigationTests.ts",
+              "line": 62,
+              "column": 3
+            },
+            {
+              "title": "empty state shown when no chats",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1755,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:40:37.262Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2e623657f39689dde41b-10aa8aa2fdf8d7691e77",
+              "file": "navigationTests.ts",
+              "line": 79,
+              "column": 3
+            },
+            {
+              "title": "settings page navigates correctly",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2009,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:40:39.045Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2e623657f39689dde41b-e3257562a12c10003522",
+              "file": "navigationTests.ts",
+              "line": 94,
+              "column": 3
+            },
+            {
+              "title": "404 page renders for unknown routes",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1017,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:40:41.064Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2e623657f39689dde41b-d83082bc7431ab19fc7d",
+              "file": "navigationTests.ts",
+              "line": 114,
+              "column": 3
+            },
+            {
+              "title": "no console errors on dashboard load",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1059,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-25T11:40:42.087Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2e623657f39689dde41b-2675f4af489dd23719ba",
+              "file": "navigationTests.ts",
+              "line": 122,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-03-25T11:38:48.997Z",
+    "duration": 114372.55,
+    "expected": 31,
+    "skipped": 3,
+    "unexpected": 6,
+    "flaky": 0
+  }
+}
