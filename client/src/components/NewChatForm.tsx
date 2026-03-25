@@ -12,6 +12,7 @@ import RoleSelector from "./RoleSelector";
 import FileUpload from "./FileUpload";
 import ModelPicker from "./ModelPicker";
 import TemplateLibrary, { type TemplateFields } from "./TemplateLibrary";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Info,
   CheckCircle,
@@ -27,6 +28,7 @@ import {
   Trash2,
   X,
   HelpCircle,
+  BookOpen,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ChatConfig } from "@/types";
@@ -182,18 +184,33 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit, handleInvalidSubmit)} className="space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="flex items-center justify-between mb-4">
-            <TabsList className="grid grid-cols-4 flex-1 mr-3">
-              <TabsTrigger value="basics">Basics</TabsTrigger>
-              <TabsTrigger value="task">Task</TabsTrigger>
-              <TabsTrigger value="context">Context</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
-            </TabsList>
-            <TemplateLibrary onUse={applyTemplate} />
-          </div>
+          <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsTrigger value="basics">Basics</TabsTrigger>
+            <TabsTrigger value="task">Task</TabsTrigger>
+            <TabsTrigger value="context">Context</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
 
           {/* ── Tab 1: Basics ── */}
           <TabsContent value="basics" className="space-y-6">
+            {/* Template Library Section */}
+            <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-white">
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-purple-600" />
+                      Start from a Template
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1">
+                      20 battle-tested templates — pre-fills role, context, task &amp; model in one click.
+                    </p>
+                  </div>
+                  <TemplateLibrary onUse={applyTemplate} />
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardContent className="p-6">
                 <FormField
@@ -367,42 +384,56 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
           {/* ── Tab 3: Context ── */}
           <TabsContent value="context" className="space-y-6">
             <Card>
-              <CardContent className="p-6">
-                <FormField
-                  control={form.control}
-                  name="role"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-semibold text-gray-900 flex items-center mb-3">
-                        <UserCheck className="w-4 h-4 mr-2 text-blue-600" />
-                        AI Role
-                        <span className="ml-2 text-xs font-normal text-gray-400">(set automatically by templates)</span>
-                      </FormLabel>
-                      <FormControl>
-                        <RoleSelector value={field.value} onChange={field.onChange} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {watchedRole === "custom" && (
+              <CardContent className="p-5">
+                <div className="flex items-center gap-4">
                   <FormField
                     control={form.control}
-                    name="customRole"
+                    name="role"
                     render={({ field }) => (
-                      <FormItem className="mt-4">
-                        <FormControl>
-                          <Input
-                            placeholder="Describe your custom role..."
-                            {...field}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </FormControl>
+                      <FormItem className="flex-1">
+                        <FormLabel className="text-sm font-semibold text-gray-900 flex items-center gap-1.5 mb-2">
+                          <UserCheck className="w-4 h-4 text-blue-600" />
+                          AI Role
+                          <span className="text-xs font-normal text-gray-400">(auto-set by templates)</span>
+                        </FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger className="rounded-xl">
+                            <SelectValue placeholder="Select a role" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="researcher">Researcher</SelectItem>
+                            <SelectItem value="product_manager">Product Manager</SelectItem>
+                            <SelectItem value="developer">Developer</SelectItem>
+                            <SelectItem value="content_writer">Content Writer</SelectItem>
+                            <SelectItem value="designer">Designer</SelectItem>
+                            <SelectItem value="presales_consultant">Presales Consultant</SelectItem>
+                            <SelectItem value="custom">Custom…</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                )}
+                  {watchedRole === "custom" && (
+                    <FormField
+                      control={form.control}
+                      name="customRole"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel className="text-sm font-semibold text-gray-900 mb-2 block">Custom Role</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Describe your custom role..."
+                              {...field}
+                              className="rounded-xl"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
               </CardContent>
             </Card>
 
