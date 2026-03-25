@@ -828,6 +828,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/projects/:id/files/cached — list project files with stale detection
+  // IMPORTANT: must be registered BEFORE the wildcard GET /api/projects/:id/files/*
+  app.get('/api/projects/:id/files/cached', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const projectId = parseInt(req.params.id);
+      const [project] = await db.select().from(projects)
+        .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+      if (!project) return res.status(404).json({ message: "Project not found" });
+
+      const files = await getProjectFiles(projectId);
+      res.json(files);
+    } catch (error: any) {
+      console.error("Error listing cached files:", error);
+      res.status(500).json({ message: "Failed to list cached files" });
+    }
+  });
+
   // GET /api/projects/:id/files/* — read/extract a specific file
   app.get('/api/projects/:id/files/*', mockAuth, async (req: any, res) => {
     try {
@@ -1147,24 +1165,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ─── End B9 ────────────────────────────────────────────────────────────────
 
   // ─── File Intelligence — Tier 1 (FI-T1.3) ─────────────────────────────────
-
-  // GET /api/projects/:id/files/cached — list project files with stale detection
-  // NOTE: registered before the wildcard GET /api/projects/:id/files/*
-  app.get('/api/projects/:id/files/cached', mockAuth, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const projectId = parseInt(req.params.id);
-      const [project] = await db.select().from(projects)
-        .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
-      if (!project) return res.status(404).json({ message: "Project not found" });
-
-      const files = await getProjectFiles(projectId);
-      res.json(files);
-    } catch (error: any) {
-      console.error("Error listing cached files:", error);
-      res.status(500).json({ message: "Failed to list cached files" });
-    }
-  });
 
   // POST /api/projects/:id/files/attach — extract + cache a file, return ProjectFile record
   app.post('/api/projects/:id/files/attach', mockAuth, async (req: any, res) => {

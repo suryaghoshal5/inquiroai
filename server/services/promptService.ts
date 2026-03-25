@@ -1,5 +1,15 @@
 import { storage } from "../storage";
 import { ChatConfig } from "@shared/schema";
+import { db } from "../db";
+import { chatFiles, projectFiles } from "@shared/schema";
+import { eq, and, isNull } from "drizzle-orm";
+
+// Approximate token estimate: 1 token ≈ 4 chars
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+const FILE_TOKEN_BUDGET = 30_000; // max tokens for all file content combined
 
 export class PromptService {
   private static defaultPrompts = {
@@ -572,6 +582,64 @@ Apply these enhanced capabilities throughout your research process.`;
       .replace(/{audience}/g, config.audience || "General audience");
 
     return prompt;
+  }
+
+  /**
+   * Assemble a structured <files> block from chat_files attached to this chat.
+   * Returns empty string if no files are attached.
+   */
+  static async buildFilesBlock(chatId: number): Promise<string> {
+    const rows = await db
+      .select({ chatFile: chatFiles, pf: projectFiles })
+      .from(chatFiles)
+      .innerJoin(projectFiles, eq(chatFiles.projectFileId, projectFiles.id))
+      .where(and(eq(chatFiles.chatId, chatId), isNull(chatFiles.detachedAt)));
+
+    if (rows.length === 0) return "";
+
+    // Budget: distribute FILE_TOKEN_BUDGET proportionally across files
+    const totalChars = rows.reduce((s, r) => s + r.pf.extractedLength, 0);
+    const totalTokens = estimateTokens(new Array(totalChars).fill("x").join(""));
+
+    const parts = rows.map(({ pf }) => {
+      let content = pf.extractedText;
+      if (totalTokens > FILE_TOKEN_BUDGET) {
+        const fraction = pf.extractedLength / Math.max(totalChars, 1);
+        const charBudget = Math.floor((FILE_TOKEN_BUDGET * 4) * fraction);
+        if (content.length > charBudget) {
+          const omitted = content.length - charBudget;
+          content = content.slice(0, charBudget) + `\n[TRUNCATED — ${omitted} chars omitted]`;
+        }
+      }
+
+      const sizeMb = (pf.fileSizeBytes / 1_048_576).toFixed(2);
+      const sizeStr = pf.fileSizeBytes < 1_048_576
+        ? `${(pf.fileSizeBytes / 1024).toFixed(1)}KB`
+        : `${sizeMb}MB`;
+      const extractedDate = pf.createdAt
+        ? new Date(pf.createdAt).toISOString().split("T")[0]
+        : "unknown";
+
+      return `  <file name="${pf.fileName}" type="${pf.fileType}" size="${sizeStr}" extracted="${extractedDate}">\n${content}\n  </file>`;
+    });
+
+    return `<files>\n${parts.join("\n")}\n</files>`;
+  }
+
+  /**
+   * Generate prompt with <files> block injected (replaces/supplements {inputData}).
+   * Falls back to plain generatePrompt if no files are attached.
+   */
+  static async generatePromptWithFiles(config: ChatConfig, chatId: number): Promise<string> {
+    const basePrompt = await this.generatePrompt(config);
+    const filesBlock = await this.buildFilesBlock(chatId);
+    if (!filesBlock) return basePrompt;
+
+    // Inject files block after the INPUT DATA line if present, else append
+    if (basePrompt.includes("**INPUT DATA:**") || basePrompt.includes("INPUT DATA:")) {
+      return basePrompt + `\n\n${filesBlock}`;
+    }
+    return basePrompt + `\n\n${filesBlock}`;
   }
 
   static getUniversalInstructions(): string {

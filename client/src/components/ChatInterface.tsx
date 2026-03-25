@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import FileBrowser from "@/components/FileBrowser";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -61,6 +62,25 @@ interface ChatInterfaceProps {
   obsidianVaultConfigured?: boolean;
   projectName?: string;
   projectId?: number;
+  projectLocalFolderPath?: string | null;
+}
+
+interface AttachedChatFile {
+  chatFile: {
+    id: number;
+    chatId: number;
+    projectFileId: number;
+    attachedAt: string;
+    detachedAt: string | null;
+  };
+  projectFile: {
+    id: number;
+    fileName: string;
+    relativePath: string;
+    fileType: string;
+    fileSizeBytes: number;
+    createdAt: string;
+  };
 }
 
 export default function ChatInterface({
@@ -81,11 +101,13 @@ export default function ChatInterface({
   obsidianVaultConfigured,
   projectName,
   projectId,
+  projectLocalFolderPath,
 }: ChatInterfaceProps) {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [showFileBrowserDialog, setShowFileBrowserDialog] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [bannerVisible, setBannerVisible] = useState(false);
   const [bannerExpanded, setBannerExpanded] = useState(false);
@@ -101,6 +123,28 @@ export default function ChatInterface({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const userScrolledUpRef = useRef(false);
+
+  // Attached files query (only for project chats with a local folder)
+  const { data: attachedFiles, refetch: refetchAttached } = useQuery<AttachedChatFile[]>({
+    queryKey: [`/api/chats/${chat.id}/files`],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/chats/${chat.id}/files`);
+      return res.json();
+    },
+    enabled: !!projectLocalFolderPath,
+  });
+
+  const detachFileMutation = useMutation({
+    mutationFn: async (chatFileId: number) => {
+      await apiRequest("DELETE", `/api/chats/${chat.id}/files/${chatFileId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/chats/${chat.id}/files`] });
+    },
+    onError: () => {
+      toast({ title: "Could not detach file", variant: "destructive" });
+    },
+  });
 
   const roleMutation = useMutation({
     mutationFn: async (newRole: string) => {
@@ -520,6 +564,59 @@ export default function ChatInterface({
         open={showLinkModal}
         onClose={() => setShowLinkModal(false)}
       />
+
+      {/* Attached Files Pill Bar — shown only when files are attached */}
+      {projectLocalFolderPath && attachedFiles && attachedFiles.length > 0 && (
+        <div className="px-6 py-2 border-b border-gray-100 flex flex-wrap items-center gap-2 bg-white">
+          {attachedFiles.map(({ chatFile, projectFile }) => (
+            <div
+              key={chatFile.id}
+              title={`${(projectFile.fileSizeBytes / 1024).toFixed(1)} KB · Extracted ${new Date(projectFile.createdAt).toLocaleDateString()}`}
+              className="inline-flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-full px-3 py-1 text-xs text-blue-800"
+            >
+              <FileText className="w-3 h-3 shrink-0" />
+              <span className="max-w-[160px] truncate">{projectFile.fileName}</span>
+              <button
+                onClick={() => detachFileMutation.mutate(chatFile.id)}
+                className="ml-0.5 text-blue-400 hover:text-red-500 transition-colors"
+                title="Remove file"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+          <button
+            onClick={() => setShowFileBrowserDialog(true)}
+            className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 transition-colors px-2 py-1 rounded-full border border-dashed border-gray-200 hover:border-blue-300"
+          >
+            <Paperclip className="w-3 h-3" />
+            Attach file
+          </button>
+        </div>
+      )}
+
+      {/* File Browser Dialog */}
+      {projectLocalFolderPath && projectId && (
+        <Dialog open={showFileBrowserDialog} onOpenChange={setShowFileBrowserDialog}>
+          <DialogContent className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FolderOpen className="w-4 h-4" />
+                Attach files to this chat
+              </DialogTitle>
+            </DialogHeader>
+            <FileBrowser
+              projectId={projectId}
+              folderPath={projectLocalFolderPath}
+              chatId={chat.id}
+              onChatFileAttached={() => {
+                refetchAttached();
+                setShowFileBrowserDialog(false);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Messages Area */}
       <div
@@ -947,14 +1044,17 @@ export default function ChatInterface({
                   className="w-full min-h-[3rem] max-h-32 px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200 resize-none"
                   disabled={isLoading}
                 />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-3 top-3 p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600"
-                  title="Attach File"
-                >
-                  <Paperclip className="w-4 h-4" />
-                </Button>
+                {projectLocalFolderPath && projectId && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-3 top-3 p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600"
+                    title="Attach File from Project"
+                    onClick={() => setShowFileBrowserDialog(true)}
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             </div>
             <Button

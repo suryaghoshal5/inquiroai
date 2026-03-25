@@ -9,6 +9,7 @@ import {
   boolean,
   integer,
   real,
+  smallint,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -139,6 +140,37 @@ export const promptIntelligence = pgTable('prompt_intelligence', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+// Project files — persistent store of extracted file content per project
+export const projectFiles = pgTable("project_files", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  fileName: varchar("file_name", { length: 500 }).notNull(),
+  relativePath: text("relative_path").notNull(),
+  absolutePath: text("absolute_path").notNull(),
+  fileType: varchar("file_type", { length: 20 }).notNull(), // pdf, md, txt, docx, xlsx, ts, etc.
+  fileSizeBytes: integer("file_size_bytes").notNull(),
+  contentHash: varchar("content_hash", { length: 64 }).notNull(), // SHA-256 hex
+  extractedText: text("extracted_text").notNull().default(""),
+  extractedLength: integer("extracted_length").notNull().default(0),
+  extractionMethod: varchar("extraction_method", { length: 50 }), // pdf-parse, mammoth, xlsx, text
+  extractionQuality: varchar("extraction_quality", { length: 20 }).notNull().default("good"), // good | partial | failed
+  fileModifiedAt: timestamp("file_modified_at"), // mtime of source file at extraction time
+  version: smallint("version").notNull().default(1),
+  metadata: jsonb("metadata"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Chat files — junction table linking chats to cached project files
+export const chatFiles = pgTable("chat_files", {
+  id: serial("id").primaryKey(),
+  chatId: integer("chat_id").notNull().references(() => chats.id, { onDelete: "cascade" }),
+  projectFileId: integer("project_file_id").notNull().references(() => projectFiles.id, { onDelete: "cascade" }),
+  attachedAt: timestamp("attached_at").defaultNow(),
+  detachedAt: timestamp("detached_at"), // null = currently attached
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   chats: many(chats),
@@ -152,6 +184,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
     references: [users.id],
   }),
   chats: many(chats),
+  files: many(projectFiles),
 }));
 
 export const chatsRelations = relations(chats, ({ one, many }) => ({
@@ -164,6 +197,26 @@ export const chatsRelations = relations(chats, ({ one, many }) => ({
     references: [projects.id],
   }),
   messages: many(messages),
+  files: many(chatFiles),
+}));
+
+export const projectFilesRelations = relations(projectFiles, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [projectFiles.projectId],
+    references: [projects.id],
+  }),
+  chatFiles: many(chatFiles),
+}));
+
+export const chatFilesRelations = relations(chatFiles, ({ one }) => ({
+  chat: one(chats, {
+    fields: [chatFiles.chatId],
+    references: [chats.id],
+  }),
+  projectFile: one(projectFiles, {
+    fields: [chatFiles.projectFileId],
+    references: [projectFiles.id],
+  }),
 }));
 
 export const messagesRelations = relations(messages, ({ one }) => ({
@@ -181,6 +234,8 @@ export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
 }));
 
 // Zod schemas for validation
+export const insertProjectFileSchema = createInsertSchema(projectFiles);
+export const insertChatFileSchema = createInsertSchema(chatFiles);
 export const insertProjectSchema = createInsertSchema(projects);
 export const insertUserSchema = createInsertSchema(users);
 export const insertChatSchema = createInsertSchema(chats);
@@ -204,6 +259,10 @@ export type InsertRolePrompt = z.infer<typeof insertRolePromptSchema>;
 export type RolePrompt = typeof rolePrompts.$inferSelect;
 export type InsertPromptIntelligence = z.infer<typeof insertPromptIntelligenceSchema>;
 export type PromptIntelligenceRecord = typeof promptIntelligence.$inferSelect;
+export type InsertProjectFile = z.infer<typeof insertProjectFileSchema>;
+export type ProjectFileRecord = typeof projectFiles.$inferSelect;
+export type InsertChatFile = z.infer<typeof insertChatFileSchema>;
+export type ChatFileRecord = typeof chatFiles.$inferSelect;
 
 // Chat configuration schema
 export const chatConfigSchema = z.object({

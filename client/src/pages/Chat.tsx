@@ -385,6 +385,7 @@ export default function ChatPage() {
         obsidianVaultConfigured={obsidianVaultConfigured}
         projectName={projectData?.name}
         projectId={projectData?.id}
+        projectLocalFolderPath={projectData?.localFolderPath}
       />
     </div>
   );
