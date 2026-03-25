@@ -40,9 +40,12 @@ import remarkGfm from "remark-gfm";
 import LinkToProjectModal from "@/components/LinkToProjectModal";
 import ModelPicker from "@/components/ModelPicker";
 import RoleSelector from "@/components/RoleSelector";
+import CodeContextIndicator from "@/components/CodeContextIndicator";
+import CodeBlockActions from "@/components/CodeBlockActions";
+import type { ProcessedBlock } from "@/components/CodeBlockActions";
 import { apiRequest } from "@/lib/queryClient";
 import type { Chat, Message } from "@/types";
-import type { EvaluationData, RecommendationData, ContextStatus } from "@/pages/Chat";
+import type { EvaluationData, RecommendationData, ContextStatus, CodeContextMeta } from "@/pages/Chat";
 
 interface ChatInterfaceProps {
   chat: Chat;
@@ -63,6 +66,7 @@ interface ChatInterfaceProps {
   projectName?: string;
   projectId?: number;
   projectLocalFolderPath?: string | null;
+  lastCodeContext?: CodeContextMeta | null;
 }
 
 interface AttachedChatFile {
@@ -102,6 +106,7 @@ export default function ChatInterface({
   projectName,
   projectId,
   projectLocalFolderPath,
+  lastCodeContext,
 }: ChatInterfaceProps) {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
@@ -123,6 +128,8 @@ export default function ChatInterface({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const userScrolledUpRef = useRef(false);
+  // Map of messageId → processed code blocks (populated after streaming completes)
+  const [processedBlocks, setProcessedBlocks] = useState<Record<number, ProcessedBlock[]>>({});
 
   // Attached files query (only for project chats with a local folder)
   const { data: attachedFiles, refetch: refetchAttached } = useQuery<AttachedChatFile[]>({
@@ -161,6 +168,28 @@ export default function ChatInterface({
   });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bannerDismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Process code blocks in the latest assistant message (after streaming completes)
+  useEffect(() => {
+    if (!projectId || !projectLocalFolderPath) return;
+    const lastMsg = messages[messages.length - 1];
+    if (!lastMsg || lastMsg.role !== "assistant") return;
+    if (processedBlocks[lastMsg.id] !== undefined) return; // already processed
+
+    const hasFence = /```[\w]*\n/.test(lastMsg.content);
+    if (!hasFence) return;
+
+    apiRequest("POST", `/api/projects/${projectId}/process-code-response`, {
+      responseText: lastMsg.content,
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.blocks?.length > 0) {
+          setProcessedBlocks(prev => ({ ...prev, [lastMsg.id]: data.blocks }));
+        }
+      })
+      .catch(() => {/* non-fatal — code actions just won't appear */});
+  }, [messages, projectId, projectLocalFolderPath]);
 
   // Auto-scroll to bottom when new messages arrive (unless user scrolled up)
   useEffect(() => {
@@ -639,7 +668,11 @@ export default function ChatInterface({
                   }`}
                 >
                   <div className="text-sm leading-relaxed">
-                    {message.role === 'assistant' ? (
+                    {message.role === 'assistant' ? (() => {
+                      // Counter tracks which code block we're rendering (for matching to processedBlocks)
+                      let blockIdx = 0;
+                      const msgBlocks = processedBlocks[message.id];
+                      return (
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
@@ -651,19 +684,29 @@ export default function ChatInterface({
                           ul: ({children}) => <ul className="list-disc pl-5 mb-3 text-gray-700 space-y-1">{children}</ul>,
                           ol: ({children}) => <ol className="list-decimal pl-5 mb-3 text-gray-700 space-y-1">{children}</ol>,
                           li: ({children}) => <li className="text-gray-700 leading-relaxed">{children}</li>,
-                          code: ({className, children, ...props}) => {
-                            const isBlock = !!(props as any).node?.position;
-                            // If it has a language class it's inside a pre (block); otherwise inline
+                          code: ({className, children}) => {
                             const isInline = !className;
                             return isInline
                               ? <code className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-xs font-mono border border-blue-100">{children}</code>
                               : <code className={`font-mono text-xs text-gray-800 ${className ?? ''}`}>{children}</code>;
                           },
-                          pre: ({children}) => (
-                            <pre className="bg-gray-900 text-gray-100 p-4 rounded-xl overflow-x-auto mb-3 text-xs font-mono leading-relaxed border border-gray-700">
-                              {children}
-                            </pre>
-                          ),
+                          pre: ({children}) => {
+                            const thisIdx = blockIdx++;
+                            const processed = msgBlocks?.[thisIdx];
+                            return (
+                              <div className="mb-3">
+                                <pre className="bg-gray-900 text-gray-100 p-4 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-gray-700">
+                                  {children}
+                                </pre>
+                                {projectId && processed && (
+                                  <CodeBlockActions
+                                    block={processed}
+                                    projectId={projectId}
+                                  />
+                                )}
+                              </div>
+                            );
+                          },
                           blockquote: ({children}) => (
                             <blockquote className="border-l-4 border-blue-400 pl-4 py-1 my-3 bg-blue-50 rounded-r-lg text-gray-600 italic">
                               {children}
@@ -693,7 +736,8 @@ export default function ChatInterface({
                       >
                         {message.content}
                       </ReactMarkdown>
-                    ) : (
+                      );
+                    })() : (
                       <div className="whitespace-pre-wrap">{message.content}</div>
                     )}
                   </div>
@@ -818,6 +862,13 @@ export default function ChatInterface({
       {/* Input Area */}
       <div className="bg-white border-t border-gray-200 p-6">
         <div className="max-w-4xl mx-auto">
+
+          {/* Code Context Indicator — shown when last prompt was code_* type */}
+          {lastCodeContext && projectLocalFolderPath && (
+            <div className="mb-2 px-1">
+              <CodeContextIndicator codeContext={lastCodeContext} />
+            </div>
+          )}
 
           {/* Context Status Bar */}
           {contextStatus && contextStatus.limit_tokens > 0 && (() => {

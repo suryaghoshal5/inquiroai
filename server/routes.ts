@@ -8,6 +8,7 @@ import { FileProcessor } from "./services/fileProcessor";
 import { CryptoService } from "./services/cryptoService";
 import { chatConfigSchema, insertMessageSchema, insertApiKeySchema, promptIntelligence, projects, chats, messages as messagesTable, projectConfigSchema, projectFiles, chatFiles } from "@shared/schema";
 import { extractAndCache, getProjectFiles, invalidateFile } from "./services/fileCache";
+import { assembleCodeContext, getCodeContextCacheAge } from "./services/codeContextAssembler";
 import { evaluatePrompt } from "./promptEvaluator";
 import { recommendModel } from "./modelRouter";
 import { manageContext, estimateMessagesTokens, estimateTokens } from "./contextManager";
@@ -254,6 +255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // --- Layer 3: Context Manager (runs before stream starts) ---
     let contextResult: any;
     let systemPrompt: string;
+    let codeContextMeta: any = null;
     try {
       const chatMessages = await storage.getChatMessages(chatId);
       const chatConfig = {
@@ -271,6 +273,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title: chat.title,
       };
       systemPrompt = await PromptService.generatePromptWithFiles(chatConfig, chatId);
+
+      // --- CI-C1.2: Code Context Injection ---
+      // Inject <codebase_context> for code_* prompt types when project has a local folder
+      const CODE_PROMPT_TYPES = new Set(["code_generation", "code_review", "code_refactor"]);
+      if (CODE_PROMPT_TYPES.has(evaluation.prompt_type) && chat.projectId) {
+        try {
+          // Fetch project to get localFolderPath
+          const [project] = await db.select().from(projects).where(eq(projects.id, chat.projectId));
+          if (project?.localFolderPath) {
+            const codeCtx = await assembleCodeContext(chat.projectId, project.localFolderPath);
+            const cacheAgeMin = getCodeContextCacheAge(chat.projectId);
+
+            // Build <codebase_context> block, capped at 8K tokens (~32K chars)
+            const CODE_CONTEXT_CHAR_BUDGET = 32_000;
+            const stackStr = [
+              ...codeCtx.stack.languages,
+              ...codeCtx.stack.frameworks,
+              ...(codeCtx.stack.testFramework ? [codeCtx.stack.testFramework] : []),
+            ].join(" · ");
+
+            const schemaExcerpt = codeCtx.schema
+              ? `  <schema_excerpt>\n${codeCtx.schema}\n  </schema_excerpt>`
+              : "";
+
+            const recentFilesXml = codeCtx.recentFiles.map(f =>
+              `    <file path="${f.path}" modified="${f.modified}">\n${f.lines}\n    </file>`
+            ).join("\n");
+
+            const conventionsStr = codeCtx.conventions.join(" · ");
+
+            let codeContextBlock = [
+              "<codebase_context>",
+              `  <stack>${stackStr}</stack>`,
+              schemaExcerpt,
+              codeCtx.recentFiles.length > 0 ? `  <recent_files>\n${recentFilesXml}\n  </recent_files>` : "",
+              conventionsStr ? `  <conventions>${conventionsStr}</conventions>` : "",
+              "</codebase_context>",
+            ].filter(Boolean).join("\n");
+
+            // Truncate if over budget
+            if (codeContextBlock.length > CODE_CONTEXT_CHAR_BUDGET) {
+              codeContextBlock = codeContextBlock.slice(0, CODE_CONTEXT_CHAR_BUDGET) + "\n  ...[truncated]\n</codebase_context>";
+            }
+
+            systemPrompt = codeContextBlock + "\n\n" + systemPrompt;
+            codeContextMeta = {
+              stack: stackStr,
+              schema_found: !!codeCtx.schema,
+              recent_files: codeCtx.recentFiles.map(f => f.path),
+              conventions: codeCtx.conventions,
+              cache_age_minutes: cacheAgeMin ?? 0,
+            };
+          }
+        } catch (err) {
+          console.warn("Code context assembly failed (non-fatal):", err);
+        }
+      }
 
       const rawMessages = chatMessages.map(m => ({
         role: m.role as 'user' | 'assistant' | 'system',
@@ -318,6 +377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         compression_count: contextResult.compression_count,
         was_compressed: contextResult.was_compressed,
       },
+      ...(codeContextMeta ? { code_context: codeContextMeta } : {}),
     });
 
     // --- Stream AI response ---
@@ -1295,6 +1355,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ─── End File Intelligence ─────────────────────────────────────────────────
+
+  // ─── Code Intelligence ────────────────────────────────────────────────────
+
+  // CI-C2.1/2.2: POST /api/projects/:projectId/process-code-response
+  // Parse code blocks from an AI response and return diff metadata
+  app.post('/api/projects/:projectId/process-code-response', mockAuth, async (req: any, res) => {
+    try {
+      const { processCodeResponse } = await import("./services/codeResponseProcessor");
+      const userId = req.user.claims.sub;
+      const projectId = parseInt(req.params.projectId);
+      const { responseText } = req.body;
+
+      if (!responseText || typeof responseText !== "string") {
+        return res.status(400).json({ message: "responseText is required" });
+      }
+
+      const [project] = await db.select().from(projects).where(
+        and(eq(projects.id, projectId), eq(projects.userId, userId))
+      );
+      if (!project) return res.status(404).json({ message: "Project not found" });
+
+      const blocks = await processCodeResponse(responseText, project.localFolderPath ?? null);
+      res.json({ blocks });
+    } catch (error: any) {
+      console.error("Error processing code response:", error);
+      res.status(500).json({ message: "Failed to process code response" });
+    }
+  });
+
+  // CI-C2.3: POST /api/projects/:projectId/apply-code
+  // Write a code block to a file within the project folder
+  const APPLY_CODE_ALLOWED_EXTS = new Set([
+    ".ts", ".tsx", ".js", ".jsx", ".py", ".md", ".json",
+    ".yaml", ".yml", ".css", ".html", ".sql",
+  ]);
+  const APPLY_CODE_MAX_BYTES = 2 * 1024 * 1024; // 2MB
+
+  app.post('/api/projects/:projectId/apply-code', mockAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const projectId = parseInt(req.params.projectId);
+      const { targetRelativePath, content, backupOriginal } = req.body;
+
+      if (!targetRelativePath || typeof targetRelativePath !== "string") {
+        return res.status(400).json({ message: "targetRelativePath is required" });
+      }
+      if (typeof content !== "string") {
+        return res.status(400).json({ message: "content is required" });
+      }
+
+      const [project] = await db.select().from(projects).where(
+        and(eq(projects.id, projectId), eq(projects.userId, userId))
+      );
+      if (!project?.localFolderPath) return res.status(404).json({ message: "Project not found or no local folder" });
+
+      const folderPath = project.localFolderPath;
+      const resolved = path.resolve(folderPath, targetRelativePath);
+      const base = path.resolve(folderPath);
+
+      // 1. Path traversal prevention
+      if (!resolved.startsWith(base + path.sep) && resolved !== base) {
+        return res.status(403).json({ message: "Path traversal not allowed" });
+      }
+
+      // 2. Extension allowlist
+      const ext = path.extname(resolved).toLowerCase();
+      if (!APPLY_CODE_ALLOWED_EXTS.has(ext)) {
+        return res.status(400).json({ message: `Extension '${ext}' is not allowed` });
+      }
+
+      // 3. Size limit
+      const byteLength = Buffer.byteLength(content, "utf-8");
+      if (byteLength > APPLY_CODE_MAX_BYTES) {
+        return res.status(413).json({ message: "Content exceeds 2MB limit" });
+      }
+
+      // 4. Backup if requested
+      let backupPath: string | undefined;
+      if (backupOriginal) {
+        try {
+          const existing = await fs.readFile(resolved, "utf-8");
+          backupPath = resolved + ".bak";
+          await fs.writeFile(backupPath, existing, "utf-8");
+        } catch {
+          // File doesn't exist yet — no backup needed
+        }
+      }
+
+      // 5. Ensure parent directory exists, then write
+      await fs.mkdir(path.dirname(resolved), { recursive: true });
+      await fs.writeFile(resolved, content, "utf-8");
+
+      res.json({
+        success: true,
+        path: targetRelativePath,
+        bytesWritten: byteLength,
+        ...(backupPath ? { backupPath: path.relative(folderPath, backupPath) } : {}),
+      });
+    } catch (error: any) {
+      console.error("Error applying code:", error);
+      res.status(500).json({ message: "Failed to apply code" });
+    }
+  });
+
+  // ─── End Code Intelligence ────────────────────────────────────────────────
 
   // Create HTTP server
   const httpServer = createServer(app);

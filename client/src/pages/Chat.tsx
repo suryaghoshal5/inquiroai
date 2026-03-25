@@ -38,6 +38,14 @@ export interface ContextStatus {
   was_compressed: boolean;
 }
 
+export interface CodeContextMeta {
+  stack: string;
+  schema_found: boolean;
+  recent_files: string[];
+  conventions: string[];
+  cache_age_minutes: number;
+}
+
 export default function ChatPage() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
@@ -48,6 +56,7 @@ export default function ChatPage() {
   const [lastRecommendation, setLastRecommendation] = useState<RecommendationData | null>(null);
   const [modelOverride, setModelOverride] = useState<string | null>(null);
   const [contextStatus, setContextStatus] = useState<ContextStatus | null>(null);
+  const [lastCodeContext, setLastCodeContext] = useState<CodeContextMeta | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState<string | null>(null);
   const [obsidianVaultConfigured, setObsidianVaultConfigured] = useState(false);
@@ -156,6 +165,8 @@ export default function ChatPage() {
             if (event.evaluation) setLastEvaluation(event.evaluation);
             if (event.recommendation) setLastRecommendation(event.recommendation);
             if (event.context_status) setContextStatus(event.context_status);
+            if (event.code_context) setLastCodeContext(event.code_context);
+            else setLastCodeContext(null);
             setModelOverride(null);
           } else if (event.type === 'token') {
             setStreamingContent(prev => (prev ?? '') + event.token);
@@ -386,6 +397,7 @@ export default function ChatPage() {
         projectName={projectData?.name}
         projectId={projectData?.id}
         projectLocalFolderPath={projectData?.localFolderPath}
+        lastCodeContext={lastCodeContext}
       />
     </div>
   );
