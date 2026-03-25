@@ -60,7 +60,9 @@ export async function extractEntities(
       EXTRACTOR_SYSTEM_PROMPT
     );
 
-    const parsed = JSON.parse(result.content) as ExtractionResult;
+    // Strip markdown code fences if the model wrapped the JSON
+    const raw = result.content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    const parsed = JSON.parse(raw) as ExtractionResult;
 
     // Validate shape
     if (!Array.isArray(parsed.entities)) {

@@ -290,16 +290,21 @@ export default function Settings() {
                           </p>
                         </div>
                         {vaultPath && (
-                          <div className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-lg text-sm">
-                            <BookMarked className="w-4 h-4 text-purple-600 shrink-0" />
-                            <span className="text-purple-800 font-mono truncate">{vaultPath}</span>
-                            <a
-                              href={`obsidian://open?path=${encodeURIComponent(vaultPath)}`}
-                              className="ml-auto text-purple-600 hover:text-purple-800 shrink-0 flex items-center gap-1"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              Open
-                            </a>
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-lg text-sm">
+                              <BookMarked className="w-4 h-4 text-purple-600 shrink-0" />
+                              <span className="text-purple-800 font-mono truncate">{vaultPath}</span>
+                              <a
+                                href={`obsidian://open?vault=${encodeURIComponent(vaultPath.split('/').pop() ?? 'InquiroAI_Vault')}`}
+                                className="ml-auto text-purple-600 hover:text-purple-800 shrink-0 flex items-center gap-1"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                Open in Obsidian
+                              </a>
+                            </div>
+                            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
+                              First-time setup: Open Obsidian → "Open folder as vault" → select the folder above. After registering the vault once, the "Open in Obsidian" link will work directly.
+                            </p>
                           </div>
                         )}
                       </div>
