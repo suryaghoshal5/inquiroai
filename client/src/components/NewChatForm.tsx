@@ -54,10 +54,10 @@ const chatConfigSchema = z.object({
 // Which tab each field belongs to (for validation error routing)
 const FIELD_TAB: Record<string, string> = {
   title: "basics",
-  role: "basics",
-  customRole: "basics",
   task: "task",
   inputData: "task",
+  role: "context",
+  customRole: "context",
   context: "context",
   constraints: "context",
   audience: "context",
@@ -224,45 +224,6 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <FormField
-                  control={form.control}
-                  name="role"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-semibold text-gray-900 flex items-center mb-3">
-                        <UserCheck className="w-4 h-4 mr-2 text-blue-600" />
-                        Role Selection
-                      </FormLabel>
-                      <FormControl>
-                        <RoleSelector value={field.value} onChange={field.onChange} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {watchedRole === "custom" && (
-                  <FormField
-                    control={form.control}
-                    name="customRole"
-                    render={({ field }) => (
-                      <FormItem className="mt-4">
-                        <FormControl>
-                          <Input
-                            placeholder="Describe your custom role..."
-                            {...field}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-              </CardContent>
-            </Card>
-
             <div className="flex justify-end">
               <Button
                 type="button"
@@ -405,6 +366,46 @@ export default function NewChatForm({ onSubmit, isLoading }: NewChatFormProps) {
 
           {/* ── Tab 3: Context ── */}
           <TabsContent value="context" className="space-y-6">
+            <Card>
+              <CardContent className="p-6">
+                <FormField
+                  control={form.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-semibold text-gray-900 flex items-center mb-3">
+                        <UserCheck className="w-4 h-4 mr-2 text-blue-600" />
+                        AI Role
+                        <span className="ml-2 text-xs font-normal text-gray-400">(set automatically by templates)</span>
+                      </FormLabel>
+                      <FormControl>
+                        <RoleSelector value={field.value} onChange={field.onChange} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {watchedRole === "custom" && (
+                  <FormField
+                    control={form.control}
+                    name="customRole"
+                    render={({ field }) => (
+                      <FormItem className="mt-4">
+                        <FormControl>
+                          <Input
+                            placeholder="Describe your custom role..."
+                            {...field}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardContent className="p-6">
                 <FormField
